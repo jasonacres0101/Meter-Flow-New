@@ -160,7 +160,7 @@ class ReportTemplateSuggestionService
 
     /**
      * @param  array<string, array<int, string>>  $configuration
-     * @return array{mapped_count: int, missing_count: int, unused_count: int, rows: array<int, array{key: string, label: string, status: string, tone: string, note: string}>, unused_fields: array<int, array{label: string, value: string}>}
+     * @return array{mapped_count: int, missing_count: int, unused_count: int, rows: array<int, array{key: string, label: string, value: string|null, status: string, tone: string, note: string}>, unused_fields: array<int, array{label: string, value: string}>}
      */
     public function reviewMapping(string $body, array $configuration): array
     {
@@ -177,6 +177,7 @@ class ReportTemplateSuggestionService
                     return [[
                         'key' => $key,
                         'label' => '',
+                        'value' => null,
                         'status' => 'missing',
                         'tone' => 'bg-slate-50 text-slate-600',
                         'note' => 'No label selected for this parser field.',
@@ -192,6 +193,7 @@ class ReportTemplateSuggestionService
                         return [
                             'key' => $key,
                             'label' => $label,
+                            'value' => (string) $detected[$normalised]['value'],
                             'status' => 'matched',
                             'tone' => 'bg-emerald-50 text-emerald-700',
                             'note' => 'Found in the email.',
@@ -201,6 +203,7 @@ class ReportTemplateSuggestionService
                     return [
                         'key' => $key,
                         'label' => $label,
+                        'value' => null,
                         'status' => 'not found',
                         'tone' => 'bg-rose-50 text-rose-700',
                         'note' => 'AI mapped this label, but it was not found in the detected email fields.',

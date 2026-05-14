@@ -130,6 +130,7 @@
                                 <tr>
                                     <th class="px-3 py-2">Parser field</th>
                                     <th class="px-3 py-2">Mapped label</th>
+                                    <th class="px-3 py-2">Value</th>
                                     <th class="px-3 py-2">Review</th>
                                 </tr>
                             </thead>
@@ -138,6 +139,7 @@
                                     <tr>
                                         <td class="px-3 py-2 font-mono text-xs text-slate-700">{{ $row['key'] }}</td>
                                         <td class="px-3 py-2 font-semibold text-slate-950">{{ $row['label'] ?: 'Not mapped' }}</td>
+                                        <td class="px-3 py-2 font-mono text-xs text-slate-700">{{ filled($row['value']) ? $row['value'] : '—' }}</td>
                                         <td class="px-3 py-2">
                                             <span class="rounded-full px-2.5 py-1 text-xs font-black {{ $row['tone'] }}">{{ $row['status'] }}</span>
                                             <span class="ml-2 text-xs text-slate-500">{{ $row['note'] }}</span>
