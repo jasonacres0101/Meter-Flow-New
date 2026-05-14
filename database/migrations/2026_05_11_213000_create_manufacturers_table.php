@@ -39,6 +39,7 @@ return new class extends Migration
             });
 
         Schema::table('machine_models', function (Blueprint $table) {
+            $table->index('company_id', 'machine_models_company_id_index');
             $table->dropUnique('machine_models_company_model_unique');
             $table->unique(['company_id', 'manufacturer_id', 'model_name'], 'machine_models_company_manufacturer_model_unique');
         });
@@ -49,6 +50,7 @@ return new class extends Migration
         Schema::table('machine_models', function (Blueprint $table) {
             $table->dropUnique('machine_models_company_manufacturer_model_unique');
             $table->unique(['company_id', 'manufacturer', 'model_name'], 'machine_models_company_model_unique');
+            $table->dropIndex('machine_models_company_id_index');
             $table->dropForeign(['manufacturer_id']);
             $table->dropIndex(['manufacturer_id', 'model_name']);
             $table->dropColumn('manufacturer_id');
