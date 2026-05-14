@@ -20,7 +20,7 @@ return new class extends Migration
             $table->json('functional_checks');
             $table->text('resolution')->nullable();
             $table->timestamps();
-            $table->index(['service_ticket_id', 'created_at']);
+            $table->index(['service_ticket_id', 'created_at'], 'ticket_review_ticket_created_idx');
         });
     }
 
