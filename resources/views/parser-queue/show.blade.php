@@ -42,7 +42,7 @@
     @unless($canApprove)
         <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <strong>Machine match needed.</strong>
-            The detected serial is <span class="font-mono font-black">{{ $email->extractedSerialNumber() ?: 'not found' }}</span>. Create or update the machine first, then reprocess this email.
+            The detected serial is <span class="font-mono font-black">{{ $email->extractedSerialNumber() ?: 'not found' }}</span>. Create or update the machine first, then reprocess this email. Approval is hidden until the report has a machine model.
         </div>
     @endunless
 
@@ -168,12 +168,15 @@
                 </div>
 
                 <div class="mt-4 grid gap-2 sm:grid-cols-2">
-                    <button class="app-button" @disabled(! $canApprove)>Approve for this account</button>
-                    <button
-                        formaction="{{ route('parser-queue.approve-global', $email) }}"
-                        class="app-button-secondary"
-                        @disabled(! $canApprove)
-                    >Approve as global template</button>
+                    @if($canApprove)
+                        <button class="app-button">Approve for this account</button>
+                        <button
+                            formaction="{{ route('parser-queue.approve-global', $email) }}"
+                            class="app-button-secondary"
+                        >Approve as global template</button>
+                    @else
+                        <a href="{{ route('parser-queue.index', ['bucket' => 'machine-match']) }}" class="app-button-secondary sm:col-span-2 text-center">Back to machine match queue</a>
+                    @endif
                 </div>
             </form>
 

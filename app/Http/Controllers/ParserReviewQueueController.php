@@ -24,6 +24,7 @@ class ParserReviewQueueController extends Controller
 
     public function index(Request $request): View
     {
+        $bucket = $request->string('bucket')->toString() ?: 'ready';
         $emails = IncomingReportEmail::query()
             ->with(['company', 'machine.client', 'machine.machineModel'])
             ->whereIn('parse_status', [
@@ -31,6 +32,13 @@ class ParserReviewQueueController extends Controller
                 IncomingReportEmail::STATUS_FAILED,
                 IncomingReportEmail::STATUS_UNMATCHED,
             ])
+            ->when($bucket !== 'all', function ($query) use ($bucket) {
+                match ($bucket) {
+                    'machine-match' => $query->whereNull('machine_id')->where('parse_status', IncomingReportEmail::STATUS_UNMATCHED),
+                    'failed' => $query->where('parse_status', IncomingReportEmail::STATUS_FAILED),
+                    default => $query->whereNotNull('machine_id')->where('parse_status', IncomingReportEmail::STATUS_PENDING_TEMPLATE),
+                };
+            })
             ->when($request->filled('status'), fn ($query) => $query->where('parse_status', $request->string('status')->toString()))
             ->when($request->filled('q'), function ($query) use ($request) {
                 $term = '%'.$request->string('q')->toString().'%';
@@ -53,7 +61,20 @@ class ParserReviewQueueController extends Controller
             $email->setAttribute('ai_review_recommendation', $this->suggestions->aiReviewRecommendation($email->body_text, filled($email->machine_id)));
         });
 
-        return view('parser-queue.index', ['emails' => $emails]);
+        return view('parser-queue.index', [
+            'emails' => $emails,
+            'bucket' => $bucket,
+            'bucketCounts' => [
+                'ready' => IncomingReportEmail::query()->whereNotNull('machine_id')->where('parse_status', IncomingReportEmail::STATUS_PENDING_TEMPLATE)->count(),
+                'machine-match' => IncomingReportEmail::query()->whereNull('machine_id')->where('parse_status', IncomingReportEmail::STATUS_UNMATCHED)->count(),
+                'failed' => IncomingReportEmail::query()->where('parse_status', IncomingReportEmail::STATUS_FAILED)->count(),
+                'all' => IncomingReportEmail::query()->whereIn('parse_status', [
+                    IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+                    IncomingReportEmail::STATUS_FAILED,
+                    IncomingReportEmail::STATUS_UNMATCHED,
+                ])->count(),
+            ],
+        ]);
     }
 
     public function show(IncomingReportEmail $incomingReportEmail): View

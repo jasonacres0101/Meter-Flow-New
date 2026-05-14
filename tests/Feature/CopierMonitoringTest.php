@@ -640,6 +640,36 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('serial_number_labels');
     }
 
+    public function test_parser_queue_defaults_to_matched_reports_ready_for_template(): void
+    {
+        $machine = $this->sharpMachine(withTemplate: false);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $matched = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => $machine->id,
+            'subject' => 'AI TEST - matched ready report',
+            'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+        ]);
+        $unmatched = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => null,
+            'subject' => 'AI TEST - unmatched machine report',
+            'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+        ]);
+
+        $this->actingAs($admin)->get(route('parser-queue.index'))
+            ->assertOk()
+            ->assertSee('Ready for approval')
+            ->assertSee($matched->subject)
+            ->assertDontSee($unmatched->subject);
+
+        $this->actingAs($admin)->get(route('parser-queue.index', ['bucket' => 'machine-match']))
+            ->assertOk()
+            ->assertSee('Machine match first')
+            ->assertSee($unmatched->subject)
+            ->assertDontSee($matched->subject);
+    }
+
     public function test_template_wizard_detects_bracket_comma_fields(): void
     {
         $company = Client::factory()->create()->company;
@@ -860,7 +890,10 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('36301')
             ->assertSee('Toner Residual (Bk)')
             ->assertSee('24%')
-            ->assertSee('sharp_mx_status_email');
+            ->assertSee('sharp_mx_status_email')
+            ->assertSee('Back to machine match queue')
+            ->assertDontSee('Approve for this account')
+            ->assertDontSee('Approve as global template');
     }
 
     public function test_template_edit_shows_detected_fields_from_sample_body(): void

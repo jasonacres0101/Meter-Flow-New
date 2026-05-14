@@ -2,11 +2,26 @@
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <h1 class="app-page-title">Parser Queue</h1>
-            <p class="mt-1 text-sm text-slate-500">Support review for reports that need a machine match, parser setup, or template approval.</p>
+            <p class="mt-1 text-sm text-slate-500">Support review for matched reports that need parser setup, plus separate triage for unmatched and failed reports.</p>
         </div>
     </div>
 
+    <div class="mb-5 flex flex-wrap gap-2">
+        @foreach([
+            'ready' => 'Ready for template',
+            'machine-match' => 'Needs machine match',
+            'failed' => 'Failed parse',
+            'all' => 'All review',
+        ] as $key => $label)
+            <a href="{{ route('parser-queue.index', ['bucket' => $key]) }}" class="rounded-lg border px-3 py-2 text-sm font-black transition {{ $bucket === $key ? 'border-teal-300 bg-teal-50 text-teal-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
+                {{ $label }}
+                <span class="ml-2 rounded-full bg-white px-2 py-0.5 text-xs text-slate-500">{{ $bucketCounts[$key] }}</span>
+            </a>
+        @endforeach
+    </div>
+
     <form method="get" class="app-panel mb-5 grid gap-3 rounded-xl p-4 lg:grid-cols-[1fr_0.45fr_auto]">
+        <input type="hidden" name="bucket" value="{{ $bucket }}">
         <label class="app-field">
             Search
             <input name="q" value="{{ request('q') }}" placeholder="Company, serial, model, subject or sender" class="app-field-control">
@@ -26,9 +41,21 @@
         </label>
         <div class="flex items-end gap-2">
             <button class="app-button h-11">Filter</button>
-            <a href="{{ route('parser-queue.index') }}" class="app-button-secondary h-11">Reset</a>
+            <a href="{{ route('parser-queue.index', ['bucket' => $bucket]) }}" class="app-button-secondary h-11">Reset</a>
         </div>
     </form>
+
+    @if($bucket === 'machine-match')
+        <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <strong>Machine match first.</strong>
+            These reports cannot be approved as templates yet because the app does not know which machine model they belong to.
+        </div>
+    @elseif($bucket === 'ready')
+        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <strong>Ready for approval.</strong>
+            These reports already match a machine, so AI mapping and template approval can be completed here.
+        </div>
+    @endif
 
     <div class="app-panel app-table-wrap">
         <table class="app-table">
