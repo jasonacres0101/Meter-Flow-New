@@ -106,6 +106,8 @@
                         @endforeach
                     </select>
                 </label>
+                <input type="hidden" name="ai_parser_type" value="{{ $suggestedParserType }}">
+                <input type="hidden" name="ai_parser_configuration" value="{{ $configurationJson }}">
 
                 <label class="app-field mt-4">Parser mapping JSON
                     <textarea name="parser_configuration" class="app-field-control h-72 font-mono text-xs">{{ $configurationJson }}</textarea>

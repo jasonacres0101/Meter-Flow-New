@@ -756,6 +756,39 @@ class CopierMonitoringTest extends TestCase
         ]);
     }
 
+    public function test_ai_parser_suggestion_can_be_approved_for_account(): void
+    {
+        $machine = $this->sharpMachine(withTemplate: false);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => $machine->id,
+            'body_text' => $this->sharpFixture(),
+            'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+        ]);
+        $configuration = [
+            'serial_number_labels' => ['Serial Number'],
+            'black_toner_percentage_labels' => ['Black Toner'],
+        ];
+
+        $this->actingAs($admin)->post(route('parser-queue.approve-company', $email), [
+            'ai_parser_type' => 'sharp_mx_status_email',
+            'ai_parser_configuration' => json_encode($configuration),
+        ])->assertRedirect(route('parser-queue.show', $email));
+
+        $this->assertDatabaseHas('report_templates', [
+            'company_id' => $machine->client->company_id,
+            'machine_model_id' => $machine->machine_model_id,
+            'parser_type' => 'sharp_mx_status_email',
+        ]);
+        $this->assertSame($configuration, ReportTemplate::where('machine_model_id', $machine->machine_model_id)->latest('id')->first()->parser_configuration);
+        $this->assertDatabaseHas('parser_review_logs', [
+            'incoming_report_email_id' => $email->id,
+            'action' => 'template_approved',
+            'scope' => 'company',
+        ]);
+    }
+
     public function test_unmatched_email_can_start_template_wizard_from_detected_model(): void
     {
         $company = Client::factory()->create()->company;

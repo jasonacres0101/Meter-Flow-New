@@ -145,9 +145,18 @@ class ParserReviewQueueController extends Controller
 
     private function createTemplate(IncomingReportEmail $email, Request $request, MachineModel $machineModel, ?int $companyId, string $approvalStatus): ReportTemplate
     {
+        $request->merge([
+            'parser_type' => $request->input('parser_type') ?: $request->input('ai_parser_type'),
+            'parser_configuration' => filled($request->input('parser_configuration'))
+                ? $request->input('parser_configuration')
+                : $request->input('ai_parser_configuration'),
+        ]);
+
         $data = $request->validate([
             'parser_type' => ['required', Rule::in(ParserRegistry::keys())],
             'parser_configuration' => ['required', 'json'],
+            'ai_parser_type' => ['nullable', Rule::in(ParserRegistry::keys())],
+            'ai_parser_configuration' => ['nullable', 'json'],
         ]);
         $familyKey = $this->familyKey($machineModel, $data['parser_type']);
 
