@@ -15,9 +15,10 @@ class PlatformAiSettingTest extends TestCase
     public function test_platform_admin_can_save_ai_settings(): void
     {
         $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $longServiceAccountKey = 'sk-svcacct-'.str_repeat('a', 780);
 
         $this->actingAs($admin)->put(route('platform-ai-settings.update'), [
-            'api_key' => 'sk-test-key',
+            'api_key' => $longServiceAccountKey,
             'model' => 'gpt-test-parser',
             'base_url' => 'https://api.openai.com/v1',
             'timeout' => 45,
@@ -28,8 +29,8 @@ class PlatformAiSettingTest extends TestCase
 
         $this->assertNotNull($setting);
         $this->assertSame('gpt-test-parser', $setting->model);
-        $this->assertSame('sk-test-key', $setting->api_key);
-        $this->assertNotSame('sk-test-key', $setting->getRawOriginal('api_key'));
+        $this->assertSame($longServiceAccountKey, $setting->api_key);
+        $this->assertNotSame($longServiceAccountKey, $setting->getRawOriginal('api_key'));
     }
 
     public function test_platform_admin_can_test_ai_settings(): void

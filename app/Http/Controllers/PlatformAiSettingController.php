@@ -23,7 +23,7 @@ class PlatformAiSettingController extends Controller
     {
         $setting = PlatformAiSetting::current();
         $data = $request->validate([
-            'api_key' => [$setting ? 'nullable' : 'required', 'string', 'max:500'],
+            'api_key' => [$setting ? 'nullable' : 'required', 'string', 'max:2000'],
             'model' => ['required', 'string', 'max:120'],
             'base_url' => ['required', 'url', 'max:255'],
             'timeout' => ['required', 'integer', 'min:5', 'max:120'],

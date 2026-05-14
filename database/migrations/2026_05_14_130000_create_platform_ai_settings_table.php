@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('platform_ai_settings', function (Blueprint $table) {
             $table->id();
             $table->string('provider')->default('openai');
-            $table->string('api_key')->nullable();
+            $table->text('api_key')->nullable();
             $table->string('model')->default('gpt-4.1-mini');
             $table->string('base_url')->default('https://api.openai.com/v1');
             $table->unsignedSmallInteger('timeout')->default(30);
