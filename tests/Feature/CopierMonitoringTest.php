@@ -929,6 +929,33 @@ TEXT,
         $this->assertSame(IncomingReportEmail::STATUS_PENDING_TEMPLATE, $email->parse_status);
     }
 
+    public function test_unmatched_email_can_be_manually_linked_to_account_machine(): void
+    {
+        $machine = $this->sharpMachine(withTemplate: false);
+        $machine->update(['serial_number' => 'MANUAL-LINK-001']);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => null,
+            'subject' => 'No serial candidate',
+            'body_text' => 'Device report without a readable serial label.',
+            'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+        ]);
+
+        $this->actingAs($admin)->get(route('parser-queue.show', $email))
+            ->assertOk()
+            ->assertSee('Manual machine match')
+            ->assertSee('MANUAL-LINK-001');
+
+        $this->actingAs($admin)->post(route('parser-queue.link-machine', $email), [
+            'machine_id' => $machine->id,
+        ])->assertRedirect(route('parser-queue.show', $email));
+
+        $email->refresh();
+        $this->assertSame($machine->id, $email->machine_id);
+        $this->assertSame(IncomingReportEmail::STATUS_PENDING_TEMPLATE, $email->parse_status);
+    }
+
     public function test_template_edit_shows_detected_fields_from_sample_body(): void
     {
         $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);

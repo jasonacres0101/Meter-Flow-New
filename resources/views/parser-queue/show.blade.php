@@ -101,6 +101,25 @@
                             <div class="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No serial candidates were found. Create or update the machine manually, then reprocess this email.</div>
                         @endforelse
                     </div>
+
+                    <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <h3 class="font-black text-slate-950">Manual machine match</h3>
+                        <p class="mt-1 text-sm text-slate-600">Use this when the serial assistant did not show the right button, but you know which machine this report belongs to.</p>
+
+                        <form method="post" action="{{ route('parser-queue.link-machine', $email) }}" class="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                            @csrf
+                            <select name="machine_id" class="app-field-control" @disabled($manualMatchMachines->isEmpty())>
+                                @forelse($manualMatchMachines as $machine)
+                                    <option value="{{ $machine->id }}">
+                                        {{ $machine->serial_number }} / {{ $machine->manufacturer }} {{ $machine->model }} / {{ $machine->client->name }}{{ $machine->site ? ' / '.$machine->site->name : '' }}
+                                    </option>
+                                @empty
+                                    <option value="">No machines found for this account</option>
+                                @endforelse
+                            </select>
+                            <button class="app-button-secondary" @disabled($manualMatchMachines->isEmpty())>Link selected machine</button>
+                        </form>
+                    </div>
                 </div>
             @endunless
 

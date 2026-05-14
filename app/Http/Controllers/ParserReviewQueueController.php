@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\IncomingReportEmail;
+use App\Models\Machine;
 use App\Models\MachineModel;
 use App\Models\Manufacturer;
 use App\Models\ParserReviewLog;
@@ -98,6 +99,7 @@ class ParserReviewQueueController extends Controller
             'mappingReview' => $this->suggestions->reviewMapping($incomingReportEmail->body_text, $aiSuggestion['parser_configuration'] ?? $localConfiguration),
             'aiReviewRecommendation' => $this->suggestions->aiReviewRecommendation($incomingReportEmail->body_text, filled($incomingReportEmail->machine_id)),
             'serialMatchSuggestions' => $incomingReportEmail->machine_id ? collect() : $this->serialMatches->suggestionsFor($incomingReportEmail),
+            'manualMatchMachines' => $incomingReportEmail->machine_id ? collect() : $this->manualMatchMachines($incomingReportEmail),
             'parserTypes' => ParserRegistry::options(),
         ]);
     }
@@ -108,14 +110,14 @@ class ParserReviewQueueController extends Controller
             'machine_id' => ['required', 'integer', 'exists:machines,id'],
         ]);
 
+        $machine = Machine::with(['client.company', 'site', 'machineModel'])->findOrFail($data['machine_id']);
         $suggestion = $this->serialMatches->suggestionsFor($incomingReportEmail)
             ->first(fn (array $suggestion) => $suggestion['machine']?->id === (int) $data['machine_id']);
 
-        if (! $suggestion) {
-            return back()->withErrors(['machine_id' => 'That machine is not a suggested serial match for this email.']);
+        if (! $suggestion && $incomingReportEmail->company_id && $machine->client->company_id !== $incomingReportEmail->company_id) {
+            return back()->withErrors(['machine_id' => 'Choose a machine from the same account as this email.']);
         }
 
-        $machine = $suggestion['machine'];
         $incomingReportEmail->forceFill([
             'machine_id' => $machine->id,
             'company_id' => $machine->client->company_id,
@@ -128,6 +130,16 @@ class ParserReviewQueueController extends Controller
         return redirect()
             ->route('parser-queue.show', $incomingReportEmail)
             ->with('status', 'Email linked to '.$machine->serial_number.' and reprocessed.');
+    }
+
+    private function manualMatchMachines(IncomingReportEmail $email)
+    {
+        return Machine::query()
+            ->with(['client', 'site', 'machineModel'])
+            ->when($email->company_id, fn ($query) => $query->whereHas('client', fn ($query) => $query->where('company_id', $email->company_id)))
+            ->orderBy('serial_number')
+            ->limit(250)
+            ->get();
     }
 
     public function suggestWithAi(IncomingReportEmail $incomingReportEmail, AiParserSuggestionService $aiSuggestions): RedirectResponse
