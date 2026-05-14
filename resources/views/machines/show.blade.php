@@ -552,7 +552,7 @@
         </section>
     @endunless
 
-    @if($parseErrors->isNotEmpty())
+    @if(auth()->user()->isPlatformAdmin() && $parseErrors->isNotEmpty())
         <section class="mt-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
             <h2 class="text-lg font-black">Parse Errors</h2>
             @foreach($parseErrors as $error)

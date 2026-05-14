@@ -15,6 +15,7 @@ use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MachineCredentialController;
 use App\Http\Controllers\MachineModelController;
 use App\Http\Controllers\ParserDefinitionController;
+use App\Http\Controllers\ParserReviewQueueController;
 use App\Http\Controllers\PlatformMailSettingController;
 use App\Http\Controllers\PricingSettingController;
 use App\Http\Controllers\BillingController;
@@ -67,6 +68,10 @@ Route::middleware('auth')->group(function () {
     Route::put('settings/platform-mail', [PlatformMailSettingController::class, 'update'])->middleware('platform_admin')->name('platform-mail-settings.update');
     Route::post('settings/platform-mail/test', [PlatformMailSettingController::class, 'test'])->middleware('platform_admin')->name('platform-mail-settings.test');
     Route::resource('parser-definitions', ParserDefinitionController::class)->middleware('platform_admin');
+    Route::get('parser-queue', [ParserReviewQueueController::class, 'index'])->middleware('platform_admin')->name('parser-queue.index');
+    Route::get('parser-queue/{incomingReportEmail}', [ParserReviewQueueController::class, 'show'])->middleware('platform_admin')->name('parser-queue.show');
+    Route::post('parser-queue/{incomingReportEmail}/approve-company', [ParserReviewQueueController::class, 'approveCompany'])->middleware('platform_admin')->name('parser-queue.approve-company');
+    Route::post('parser-queue/{incomingReportEmail}/approve-global', [ParserReviewQueueController::class, 'approveGlobal'])->middleware('platform_admin')->name('parser-queue.approve-global');
     Route::resource('users', CompanyUserController::class)->middleware('company_admin');
 
     Route::middleware('customer_operator')->group(function () {
@@ -109,9 +114,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('machine-models', MachineModelController::class)->middleware('not_engineer');
     Route::post('email-sources/{emailSource}/test', [EmailSourceController::class, 'test'])->middleware('company_admin')->name('email-sources.test');
     Route::resource('email-sources', EmailSourceController::class)->middleware('company_admin');
-    Route::post('report-templates/{reportTemplate}/duplicate', [ReportTemplateController::class, 'duplicate'])->middleware('not_engineer')->name('report-templates.duplicate');
-    Route::post('report-templates/{reportTemplate}/approve-global', [ReportTemplateController::class, 'approveGlobal'])->middleware('not_engineer')->name('report-templates.approve-global');
-    Route::resource('report-templates', ReportTemplateController::class)->middleware('not_engineer');
+    Route::post('report-templates/{reportTemplate}/duplicate', [ReportTemplateController::class, 'duplicate'])->middleware('platform_admin')->name('report-templates.duplicate');
+    Route::post('report-templates/{reportTemplate}/approve-global', [ReportTemplateController::class, 'approveGlobal'])->middleware('platform_admin')->name('report-templates.approve-global');
+    Route::resource('report-templates', ReportTemplateController::class)->middleware('platform_admin');
 });
 
 Route::post('inbound/mailgun', InboundEmailController::class)->name('inbound.mailgun');

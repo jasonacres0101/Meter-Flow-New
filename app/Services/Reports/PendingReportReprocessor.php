@@ -39,8 +39,18 @@ class PendingReportReprocessor
      */
     public function forTemplate(ReportTemplate $template): Collection
     {
+        $template->loadMissing('machineModel');
         $machineIds = Machine::query()
-            ->where('machine_model_id', $template->machine_model_id)
+            ->where(function ($query) use ($template) {
+                $query->where('machine_model_id', $template->machine_model_id);
+
+                if ($template->company_id === null && $template->machineModel) {
+                    $query->orWhere(function ($query) use ($template) {
+                        $query->where('manufacturer', $template->machineModel->manufacturer)
+                            ->where('model', $template->machineModel->model_name);
+                    });
+                }
+            })
             ->when($template->company_id, fn ($query) => $query->whereHas('client', fn ($query) => $query->where('company_id', $template->company_id)))
             ->pluck('id');
 

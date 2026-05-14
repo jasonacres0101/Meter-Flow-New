@@ -20,6 +20,7 @@
                         ['label' => 'Billing', 'route' => 'billing.show', 'show' => true],
                         ['label' => 'Users', 'route' => 'users.index', 'show' => true],
                         ['label' => 'Parser Library', 'route' => 'parser-definitions.index', 'show' => true],
+                        ['label' => 'Parser Queue', 'route' => 'parser-queue.index', 'show' => true],
                         ['label' => 'Master Models', 'route' => 'machine-models.index', 'show' => true],
                         ['label' => 'Report Templates', 'route' => 'report-templates.index', 'show' => true],
                         ['label' => 'Master Mailbox', 'route' => 'email-sources.index', 'show' => true],
@@ -46,8 +47,7 @@
                         ['label' => 'Service Agreements', 'route' => 'service-agreements.index', 'show' => auth()->user()->canManageCompanyUsers()],
                         ['label' => 'Pricing', 'route' => 'pricing-settings.edit', 'show' => auth()->user()->canManageCompanyUsers()],
                         ['label' => 'Toner Alerts', 'route' => 'toner-alert-settings.edit', 'show' => auth()->user()->canManageCompanyUsers()],
-                        ['label' => 'Report Templates', 'route' => 'report-templates.index', 'show' => ! auth()->user()->isEngineer()],
-                        ['label' => 'Incoming Email Store', 'route' => 'incoming-report-emails.index', 'show' => ! auth()->user()->isEngineer()],
+                        ['label' => 'Report Emails', 'route' => 'incoming-report-emails.index', 'show' => ! auth()->user()->isEngineer()],
                     ];
             @endphp
             <aside class="hidden w-72 shrink-0 border-r border-slate-900 bg-slate-950 text-white shadow-2xl shadow-slate-950/20 lg:block">

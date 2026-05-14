@@ -63,7 +63,14 @@ class ReportProcessingService
     private function activeTemplate(Machine $machine, IncomingReportEmail $email): ?ReportTemplate
     {
         return ReportTemplate::query()
-            ->where('machine_model_id', $machine->machine_model_id)
+            ->where(function ($query) use ($machine) {
+                $query->where('machine_model_id', $machine->machine_model_id)
+                    ->orWhereHas('machineModel', function ($query) use ($machine) {
+                        $query->whereNull('company_id')
+                            ->where('manufacturer', $machine->manufacturer)
+                            ->where('model_name', $machine->model);
+                    });
+            })
             ->where('is_active', true)
             ->where(function ($query) use ($machine, $email) {
                 $query->whereNull('company_id')
@@ -71,6 +78,7 @@ class ReportProcessingService
                     ->orWhere('company_id', $machine->client->company_id);
             })
             ->orderByRaw('case when company_id = ? then 0 when company_id is null then 1 else 2 end', [$machine->client->company_id])
+            ->orderByRaw('case when machine_model_id = ? then 0 else 1 end', [$machine->machine_model_id])
             ->latest()
             ->first();
     }

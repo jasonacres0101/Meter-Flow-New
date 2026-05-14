@@ -23,7 +23,7 @@ class MachineController extends Controller
         $machines = Machine::query()->join('clients', 'clients.id', '=', 'machines.client_id')->select('machines.*');
 
         return view('machines.index', [
-            'machines' => Tenant::scope($machines, request()->user(), 'clients.company_id')->with(['client', 'site', 'machineModel'])->latest('machines.created_at')->paginate(20),
+            'machines' => Tenant::scope($machines, request()->user(), 'clients.company_id')->with(['client', 'site', 'machineModel', 'latestIncomingReportEmail'])->latest('machines.created_at')->paginate(20),
         ]);
     }
 

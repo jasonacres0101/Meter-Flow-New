@@ -51,10 +51,42 @@ class IncomingReportEmail extends Model
         return $this->belongsTo(Machine::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function extractedSerialNumber(): ?string
     {
         return preg_match('/(?:\[serial(?:\s+number| no\.?)?\]|serial(?:\s+number| no\.?)?)\s*[:,=|]\s*([A-Z0-9-]+)/i', $this->body_text, $matches)
             ? trim($matches[1])
             : null;
+    }
+
+    public function customerStatusLabel(): string
+    {
+        return match ($this->parse_status) {
+            self::STATUS_PARSED => 'Reporting active',
+            self::STATUS_PENDING_TEMPLATE => 'Setup in progress',
+            self::STATUS_FAILED => 'Support review needed',
+            self::STATUS_UNMATCHED => 'Waiting for machine match',
+            default => 'Processing',
+        };
+    }
+
+    public function customerStatusTone(): string
+    {
+        return match ($this->parse_status) {
+            self::STATUS_PARSED => 'bg-emerald-50 text-emerald-700',
+            self::STATUS_PENDING_TEMPLATE => 'bg-amber-50 text-amber-800',
+            self::STATUS_FAILED => 'bg-rose-50 text-rose-700',
+            self::STATUS_UNMATCHED => 'bg-blue-50 text-blue-700',
+            default => 'bg-slate-100 text-slate-600',
+        };
+    }
+
+    public function technicalStatusLabel(): string
+    {
+        return str_replace('_', ' ', $this->parse_status);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\MachineModel;
 use App\Models\Manufacturer;
 use App\Models\ReportTemplate;
 use App\Services\Reports\PendingReportReprocessor;
+use App\Services\Reports\ReportTemplateSuggestionService;
 use App\Services\Reports\ReportProcessingService;
 use App\Support\ParserRegistry;
 use App\Support\Tenant;
@@ -18,6 +19,8 @@ use Illuminate\View\View;
 
 class ReportTemplateController extends Controller
 {
+    public function __construct(private readonly ReportTemplateSuggestionService $suggestions) {}
+
     public function index(Request $request): View
     {
         $query = ReportTemplate::query();
@@ -88,8 +91,8 @@ class ReportTemplateController extends Controller
                 'sample_body' => $sourceEmail->body_text,
                 'parser_type' => $sourceEmail->machine?->machineModel?->parser_type
                     ?? $inferredModel?->parser_type
-                    ?? $this->suggestParserType($sourceEmail->body_text),
-                'parser_configuration' => $this->suggestParserConfiguration($sourceEmail->body_text),
+                    ?? $this->suggestions->suggestParserType($sourceEmail->body_text),
+                'parser_configuration' => $this->suggestions->suggestParserConfiguration($sourceEmail->body_text),
                 'is_active' => true,
                 'approval_status' => ReportTemplate::STATUS_PENDING_GLOBAL_REVIEW,
             ])
@@ -98,7 +101,7 @@ class ReportTemplateController extends Controller
         return view('report-templates.create', [
             'reportTemplate' => $reportTemplate,
             'sourceEmail' => $sourceEmail,
-            'detectedFields' => $sourceEmail ? $this->detectedFields($sourceEmail->body_text) : collect(),
+            'detectedFields' => $sourceEmail ? $this->suggestions->detectedFields($sourceEmail->body_text) : collect(),
             'machineModels' => $query->orderBy('manufacturer')->orderBy('model_name')->get(),
             'parserTypes' => ParserRegistry::options(),
         ]);
@@ -151,13 +154,13 @@ class ReportTemplateController extends Controller
             : Tenant::scopeWithGlobal($query, request()->user());
 
         if (blank($reportTemplate->parser_configuration) && filled($reportTemplate->sample_body)) {
-            $reportTemplate->parser_configuration = $this->suggestParserConfiguration($reportTemplate->sample_body);
+            $reportTemplate->parser_configuration = $this->suggestions->suggestParserConfiguration($reportTemplate->sample_body);
         }
 
         return view('report-templates.edit', [
             'reportTemplate' => $reportTemplate,
             'sourceEmail' => null,
-            'detectedFields' => $this->detectedFields($reportTemplate->sample_body ?? ''),
+            'detectedFields' => $this->suggestions->detectedFields($reportTemplate->sample_body ?? ''),
             'machineModels' => $query->orderBy('manufacturer')->orderBy('model_name')->get(),
             'parserTypes' => ParserRegistry::options(),
         ]);
@@ -315,82 +318,9 @@ class ReportTemplateController extends Controller
         );
     }
 
-    private function detectedFields(string $body): \Illuminate\Support\Collection
-    {
-        preg_match_all('/^[^\S\r\n]*(?:\[([^\]\r\n]{2,80})\]|([^:,\r\n=\|]{2,80}))[^\S\r\n]*[:,=\|][^\S\r\n]*([^\r\n]+)[^\S\n]*$/m', $body, $matches, PREG_SET_ORDER);
-
-        return collect($matches)
-            ->map(fn (array $match) => ['label' => trim($match[1] ?: $match[2]), 'value' => trim($match[3])])
-            ->filter(fn (array $row) => filled($row['label']) && filled($row['value']))
-            ->values();
-    }
-
-    private function suggestParserConfiguration(string $body): array
-    {
-        $fields = $this->detectedFields($body);
-
-        return collect([
-            'serial_number_labels' => $this->labelsLike($fields, ['serial number', 'serial no', 'serial']),
-            'report_date_labels' => $this->labelsLike($fields, ['date', 'timestamp', 'report date']),
-            'machine_name_labels' => $this->labelsLike($fields, ['machine name', 'device name', 'asset name']),
-            'model_name_labels' => $this->labelsLike($fields, ['device model', 'model name', 'model', 'device type']),
-            'total_counter_labels' => $this->labelsLike($fields, ['total counter', 'total count', 'total pages', 'total impressions']),
-            'mono_counter_labels' => $this->labelsLike($fields, ['black & white total print count', 'b/w total', 'mono total', 'black impressions', 'total black counter']),
-            'colour_counter_labels' => $this->labelsLike($fields, ['colour total print count', 'color total print count', 'colour impressions', 'color impressions', 'total colour counter', 'total color counter']),
-            'copy_mono_counter_labels' => $this->labelsLike($fields, ['black & white copy count', 'copy mono', 'copy b/w', 'black copy impressions']),
-            'copy_colour_counter_labels' => $this->labelsLike($fields, ['full colour copy count', 'full color copy count', 'copy colour', 'copy color', 'colour copy impressions']),
-            'print_mono_counter_labels' => $this->labelsLike($fields, ['black & white print count', 'print mono', 'print b/w', 'black print impressions']),
-            'print_colour_counter_labels' => $this->labelsLike($fields, ['full colour print count', 'full color print count', 'print colour', 'print color', 'colour print impressions']),
-            'scan_counter_labels' => $this->labelsLike($fields, ['scanner count', 'scan count', 'scan images', 'scan counter', 'scan/fax counter', 'total scan/fax counter']),
-            'black_toner_percentage_labels' => $this->labelsLike($fields, ['black toner', 'toner residual (bk)']),
-            'cyan_toner_percentage_labels' => $this->labelsLike($fields, ['cyan toner', 'toner residual (c)']),
-            'magenta_toner_percentage_labels' => $this->labelsLike($fields, ['magenta toner', 'toner residual (m)']),
-            'yellow_toner_percentage_labels' => $this->labelsLike($fields, ['yellow toner', 'toner residual (y)']),
-            'black_inserted_toner_number_labels' => $this->labelsLike($fields, ['inserted toner number (bk)', 'black inserted toner number']),
-            'cyan_inserted_toner_number_labels' => $this->labelsLike($fields, ['inserted toner number (c)', 'cyan inserted toner number']),
-            'magenta_inserted_toner_number_labels' => $this->labelsLike($fields, ['inserted toner number (m)', 'magenta inserted toner number']),
-            'yellow_inserted_toner_number_labels' => $this->labelsLike($fields, ['inserted toner number (y)', 'yellow inserted toner number']),
-            'waste_toner_status_labels' => $this->labelsLike($fields, ['waste toner']),
-            'current_status_labels' => $this->labelsLike($fields, ['current status', 'device state']),
-            'service_status_labels' => $this->labelsLike($fields, ['service status', 'service required']),
-        ])
-            ->filter(fn (array $labels) => $labels !== [])
-            ->all();
-    }
-
-    private function labelsLike(\Illuminate\Support\Collection $fields, array $needles): array
-    {
-        return $fields
-            ->pluck('label')
-            ->filter(function (string $label) use ($needles) {
-                $lower = str($label)->lower()->toString();
-
-                return collect($needles)->contains(function (string $needle) use ($lower) {
-                    $needle = str($needle)->lower()->toString();
-
-                    if (str_contains($lower, $needle)) {
-                        return true;
-                    }
-
-                    if (str_contains($needle, '(')) {
-                        return false;
-                    }
-
-                    $words = collect(preg_split('/[^a-z0-9]+/', $needle))
-                        ->filter(fn (string $word) => strlen($word) > 1);
-
-                    return $words->isNotEmpty()
-                        && $words->every(fn (string $word) => str_contains($lower, $word));
-                });
-            })
-            ->unique()
-            ->values()
-            ->all();
-    }
-
     private function inferMachineModel(IncomingReportEmail $email, $query): ?MachineModel
     {
-        $modelName = collect($this->detectedFields($email->body_text))
+        $modelName = collect($this->suggestions->detectedFields($email->body_text))
             ->first(fn (array $field) => in_array(str($field['label'])->lower()->toString(), ['device model', 'model name', 'model'], true))['value'] ?? null;
 
         if (! $modelName) {
@@ -406,12 +336,4 @@ class ReportTemplateController extends Controller
             ->first();
     }
 
-    private function suggestParserType(string $body): string
-    {
-        $lower = str($body)->lower()->toString();
-
-        return str_contains($lower, 'mx-') || str_contains($lower, 'toner residual')
-            ? 'sharp_mx_status_email'
-            : 'generic_counter_email';
-    }
 }

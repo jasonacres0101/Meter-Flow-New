@@ -15,7 +15,11 @@
         <input name="manufacturer_name" value="{{ old('manufacturer_name') }}" class="app-field-control" placeholder="Only use if the manufacturer is not listed">
     </label>
     <label class="app-field">Model name<input name="model_name" value="{{ old('model_name', $machineModel->model_name ?? '') }}" class="app-field-control"></label>
-    <label class="app-field">Parser type<select name="parser_type" class="app-field-control">@foreach($parserTypes as $parser => $label)<option value="{{ $parser }}" @selected(old('parser_type', $machineModel->parser_type ?? '') === $parser)>{{ $label }} / {{ $parser }}</option>@endforeach</select></label>
+    @if(auth()->user()->isPlatformAdmin())
+        <label class="app-field">Parser type<select name="parser_type" class="app-field-control">@foreach($parserTypes as $parser => $label)<option value="{{ $parser }}" @selected(old('parser_type', $machineModel->parser_type ?? '') === $parser)>{{ $label }} / {{ $parser }}</option>@endforeach</select></label>
+    @else
+        <input type="hidden" name="parser_type" value="{{ old('parser_type', $machineModel->parser_type ?? 'generic_counter_email') }}">
+    @endif
     <label class="app-field md:col-span-2">Notes<textarea name="notes" class="app-field-control">{{ old('notes', $machineModel->notes ?? '') }}</textarea></label>
 </div>
 @if ($errors->any())<div class="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div>@endif

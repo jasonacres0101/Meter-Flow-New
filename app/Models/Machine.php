@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Machine extends Model
 {
@@ -79,6 +80,11 @@ class Machine extends Model
     public function incomingReportEmails(): HasMany
     {
         return $this->hasMany(IncomingReportEmail::class);
+    }
+
+    public function latestIncomingReportEmail(): HasOne
+    {
+        return $this->hasOne(IncomingReportEmail::class)->latestOfMany('received_at');
     }
 
     public function meterReadings(): HasMany

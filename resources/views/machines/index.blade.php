@@ -8,9 +8,16 @@
             <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th>Machine</th><th>Client</th><th>Site</th><th>Serial</th><th>Status</th></tr></thead>
             <tbody>
             @foreach ($machines as $machine)
+                @php($latestReport = $machine->latestIncomingReportEmail)
                 <tr>
                     <td><a class="font-bold text-slate-950 hover:text-teal-700" href="{{ route('machines.show', $machine) }}">{{ $machine->machine_name ?? $machine->model }}</a><div class="text-xs text-slate-500">{{ $machine->manufacturer }} {{ $machine->model }}</div></td>
-                    <td>{{ $machine->client->name }}</td><td>{{ $machine->site->name }}</td><td>{{ $machine->serial_number }}</td><td><span class="rounded-full px-3 py-1 text-xs font-bold {{ $machine->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $machine->is_active ? 'Active' : 'Inactive' }}</span></td>
+                    <td>{{ $machine->client->name }}</td><td>{{ $machine->site->name }}</td><td>{{ $machine->serial_number }}</td><td>
+                        @if($latestReport)
+                            <span class="rounded-full px-3 py-1 text-xs font-bold {{ $latestReport->customerStatusTone() }}">{{ $latestReport->customerStatusLabel() }}</span>
+                        @else
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{{ $machine->is_active ? 'Waiting for first report' : 'Inactive' }}</span>
+                        @endif
+                    </td>
                 </tr>
             @endforeach
             </tbody>
