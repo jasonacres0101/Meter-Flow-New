@@ -53,7 +53,7 @@ class IncomingReportEmail extends Model
 
     public function extractedSerialNumber(): ?string
     {
-        return preg_match('/serial(?:\s+number| no\.?)?\s*[:=|]\s*([A-Z0-9-]+)/i', $this->body_text, $matches)
+        return preg_match('/(?:\[serial(?:\s+number| no\.?)?\]|serial(?:\s+number| no\.?)?)\s*[:,=|]\s*([A-Z0-9-]+)/i', $this->body_text, $matches)
             ? trim($matches[1])
             : null;
     }

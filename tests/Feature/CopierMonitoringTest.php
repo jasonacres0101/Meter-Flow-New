@@ -539,6 +539,54 @@ class CopierMonitoringTest extends TestCase
         $this->assertSame(4, $email->fresh()->parsed_payload['raw']['toner_lifecycle']['inserted_toner_number']['cyan']);
     }
 
+    public function test_generic_parser_supports_bracket_comma_reports(): void
+    {
+        $client = Client::factory()->create();
+        $site = Site::factory()->for($client)->create();
+        $manufacturer = Manufacturer::findOrCreateByName('Konica Minolta');
+        $model = MachineModel::factory()->create([
+            'company_id' => $client->company_id,
+            'manufacturer_id' => $manufacturer->id,
+            'manufacturer' => $manufacturer->name,
+            'model_name' => 'Generic Bracket Report',
+            'parser_type' => 'generic_counter_email',
+        ]);
+        $machine = Machine::factory()->for($client)->for($site)->for($model)->create([
+            'serial_number' => 'A5C4121004367',
+            'manufacturer' => $manufacturer->name,
+            'model' => 'Generic Bracket Report',
+        ]);
+        ReportTemplate::factory()->for($model, 'machineModel')->create([
+            'company_id' => $client->company_id,
+            'parser_type' => 'generic_counter_email',
+            'is_active' => true,
+            'parser_configuration' => [
+                'model_name_labels' => ['Model Name'],
+                'serial_number_labels' => ['Serial Number'],
+                'report_date_labels' => ['Send Date'],
+                'total_counter_labels' => ['Total Counter'],
+                'colour_counter_labels' => ['Total Color Counter'],
+                'mono_counter_labels' => ['Total Black Counter'],
+                'scan_counter_labels' => ['Total Scan/Fax Counter'],
+            ],
+        ]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $client->company_id,
+            'body_text' => $this->bracketCommaFixture(),
+        ]);
+
+        app(ReportProcessingService::class)->process($email);
+
+        $this->assertDatabaseHas('incoming_report_emails', ['id' => $email->id, 'machine_id' => $machine->id, 'parse_status' => IncomingReportEmail::STATUS_PARSED]);
+        $this->assertDatabaseHas('meter_readings', [
+            'machine_id' => $machine->id,
+            'total_counter' => 171461,
+            'mono_counter' => 156291,
+            'colour_counter' => 15170,
+            'scan_counter' => 154875,
+        ]);
+    }
+
     public function test_matched_email_waits_for_template_when_machine_model_has_no_template(): void
     {
         $client = Client::factory()->create();
@@ -593,6 +641,38 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('data-review-toners', false)
             ->assertSee('data-review-counters', false)
             ->assertSee('serial_number_labels');
+    }
+
+    public function test_template_wizard_detects_bracket_comma_fields(): void
+    {
+        $company = Client::factory()->create()->company;
+        $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $client = Client::factory()->for($company)->create();
+        $site = Site::factory()->for($client)->create();
+        $model = MachineModel::factory()->for($company)->create([
+            'manufacturer' => 'Konica Minolta',
+            'model_name' => 'Generic Bracket Report',
+            'parser_type' => 'generic_counter_email',
+        ]);
+        $machine = Machine::factory()->for($client)->for($site)->create([
+            'machine_model_id' => $model->id,
+            'serial_number' => 'A5C4121004367',
+        ]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $company->id,
+            'machine_id' => $machine->id,
+            'body_text' => $this->bracketCommaFixture(),
+            'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+        ]);
+
+        $this->actingAs($admin)->get(route('report-templates.create', ['incoming_report_email_id' => $email->id]))
+            ->assertOk()
+            ->assertSee('Serial Number')
+            ->assertSee('A5C4121004367')
+            ->assertSee('option value="Serial Number" selected', false)
+            ->assertSee('option value="Total Color Counter" selected', false)
+            ->assertSee('option value="Total Black Counter" selected', false)
+            ->assertSee('option value="Total Scan/Fax Counter" selected', false);
     }
 
     public function test_creating_template_reprocesses_other_pending_emails_for_same_model(): void
@@ -905,6 +985,19 @@ Waste Toner Container||OK
 
 Device State|Attention
 Service Required|No
+EMAIL;
+    }
+
+    private function bracketCommaFixture(): string
+    {
+        return <<<'EMAIL'
+[Model Name],
+[Serial Number], A5C4121004367
+[Send Date],14/05/26
+[Total Counter],00171461
+[Total Color Counter],00015170
+[Total Black Counter],00156291
+[Total Scan/Fax Counter],00154875
 EMAIL;
     }
 }

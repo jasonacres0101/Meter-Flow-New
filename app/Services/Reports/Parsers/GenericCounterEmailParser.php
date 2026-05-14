@@ -79,7 +79,8 @@ class GenericCounterEmailParser implements MachineReportParser
     private function value(string $body, array $labels): ?string
     {
         foreach ($labels as $label) {
-            $pattern = '/^\s*'.preg_quote($label, '/').'\s*[:=\|]\s*(.+?)\s*$/mi';
+            $quotedLabel = preg_quote($label, '/');
+            $pattern = '/^\s*(?:\['.$quotedLabel.'\]|'.$quotedLabel.')\s*[:,=\|]\s*(.+?)\s*$/mi';
 
             if (preg_match($pattern, $body, $matches) && filled(trim($matches[1]))) {
                 return $this->cleanValue($matches[1]);

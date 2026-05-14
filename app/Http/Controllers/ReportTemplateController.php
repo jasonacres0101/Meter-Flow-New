@@ -317,10 +317,10 @@ class ReportTemplateController extends Controller
 
     private function detectedFields(string $body): \Illuminate\Support\Collection
     {
-        preg_match_all('/^[^\S\r\n]*([^:\r\n=\|]{2,80})[^\S\r\n]*[:=\|][^\S\r\n]*([^\r\n]+)[^\S\n]*$/m', $body, $matches, PREG_SET_ORDER);
+        preg_match_all('/^[^\S\r\n]*(?:\[([^\]\r\n]{2,80})\]|([^:,\r\n=\|]{2,80}))[^\S\r\n]*[:,=\|][^\S\r\n]*([^\r\n]+)[^\S\n]*$/m', $body, $matches, PREG_SET_ORDER);
 
         return collect($matches)
-            ->map(fn (array $match) => ['label' => trim($match[1]), 'value' => trim($match[2])])
+            ->map(fn (array $match) => ['label' => trim($match[1] ?: $match[2]), 'value' => trim($match[3])])
             ->filter(fn (array $row) => filled($row['label']) && filled($row['value']))
             ->values();
     }
@@ -335,13 +335,13 @@ class ReportTemplateController extends Controller
             'machine_name_labels' => $this->labelsLike($fields, ['machine name', 'device name', 'asset name']),
             'model_name_labels' => $this->labelsLike($fields, ['device model', 'model name', 'model', 'device type']),
             'total_counter_labels' => $this->labelsLike($fields, ['total counter', 'total count', 'total pages', 'total impressions']),
-            'mono_counter_labels' => $this->labelsLike($fields, ['black & white total print count', 'b/w total', 'mono total', 'black impressions']),
-            'colour_counter_labels' => $this->labelsLike($fields, ['colour total print count', 'color total print count', 'colour impressions', 'color impressions']),
+            'mono_counter_labels' => $this->labelsLike($fields, ['black & white total print count', 'b/w total', 'mono total', 'black impressions', 'total black counter']),
+            'colour_counter_labels' => $this->labelsLike($fields, ['colour total print count', 'color total print count', 'colour impressions', 'color impressions', 'total colour counter', 'total color counter']),
             'copy_mono_counter_labels' => $this->labelsLike($fields, ['black & white copy count', 'copy mono', 'copy b/w', 'black copy impressions']),
             'copy_colour_counter_labels' => $this->labelsLike($fields, ['full colour copy count', 'full color copy count', 'copy colour', 'copy color', 'colour copy impressions']),
             'print_mono_counter_labels' => $this->labelsLike($fields, ['black & white print count', 'print mono', 'print b/w', 'black print impressions']),
             'print_colour_counter_labels' => $this->labelsLike($fields, ['full colour print count', 'full color print count', 'print colour', 'print color', 'colour print impressions']),
-            'scan_counter_labels' => $this->labelsLike($fields, ['scanner count', 'scan count', 'scan images']),
+            'scan_counter_labels' => $this->labelsLike($fields, ['scanner count', 'scan count', 'scan images', 'scan counter', 'scan/fax counter', 'total scan/fax counter']),
             'black_toner_percentage_labels' => $this->labelsLike($fields, ['black toner', 'toner residual (bk)']),
             'cyan_toner_percentage_labels' => $this->labelsLike($fields, ['cyan toner', 'toner residual (c)']),
             'magenta_toner_percentage_labels' => $this->labelsLike($fields, ['magenta toner', 'toner residual (m)']),

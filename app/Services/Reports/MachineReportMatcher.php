@@ -12,7 +12,7 @@ class MachineReportMatcher
 
     public function extractSerialNumber(string $body): ?string
     {
-        return preg_match('/serial(?:\s+number| no\.?)?\s*[:=|]\s*([A-Z0-9-]+)/i', $body, $matches)
+        return preg_match('/(?:\[serial(?:\s+number| no\.?)?\]|serial(?:\s+number| no\.?)?)\s*[:,=|]\s*([A-Z0-9-]+)/i', $body, $matches)
             ? trim($matches[1])
             : null;
     }
