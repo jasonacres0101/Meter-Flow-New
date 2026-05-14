@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedInteger('duration_seconds')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            $table->index(['service_ticket_id', 'user_id', 'stopped_at']);
+            $table->index(['service_ticket_id', 'user_id', 'stopped_at'], 'ticket_time_user_stop_idx');
         });
     }
 
