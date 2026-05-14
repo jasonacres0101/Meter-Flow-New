@@ -664,6 +664,45 @@ TEXT,
                 'parse_error' => null,
             ],
         );
+
+        IncomingReportEmail::updateOrCreate(
+            [
+                'company_id' => $company->id,
+                'subject' => 'SAMPLE - AI parser challenge unmatched report',
+            ],
+            [
+                'machine_id' => null,
+                'from_email' => 'ai-test-device@example.test',
+                'to_email' => 'reports@example.test',
+                'received_at' => now()->subMinutes(4),
+                'body_text' => <<<TEXT
+AI Parser Challenge Report
+Report Sent|2026-05-14 15:45:00
+Device Label|Training Room Demo Copier
+Model Ref|AI-UNKNOWN-5000
+Serial Ref|AI-DEMO-NOMATCH-004
+
+Counters
+Grand Total|00123456 pages
+Mono Total|00102030 pages
+Colour Total|00021426 pages
+Scan Images|00005678
+
+Consumables
+Black Toner|38%|OK
+Cyan Toner|72%|OK
+Magenta Toner|19%|LOW
+Yellow Toner|41%|OK
+Waste Toner Container||OK
+
+This sample intentionally has no matching machine. Use Parser Queue > Ask AI for mapping to test AI suggestions before creating or matching the machine.
+TEXT,
+                'raw_payload' => ['seeded' => true, 'purpose' => 'ai_parser_challenge_unmatched'],
+                'parsed_payload' => null,
+                'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+                'parse_error' => null,
+            ],
+        );
     }
 
     /**
