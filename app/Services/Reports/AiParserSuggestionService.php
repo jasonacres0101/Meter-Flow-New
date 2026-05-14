@@ -31,6 +31,7 @@ class AiParserSuggestionService
                         'type' => 'json_schema',
                         'name' => 'parser_template_suggestion',
                         'schema' => $this->schema(),
+                        'strict' => true,
                     ],
                 ],
             ])
@@ -73,12 +74,55 @@ Use exact labels from the email body. Do not invent labels.
 Prefer generic_counter_email for unknown or pipe/comma/table formats.
 Use sharp_mx_status_email only when the report is clearly a Sharp MX status/counter email.
 Parser configuration values must be arrays of labels from the email.
+Return every allowed parser configuration key. Use an empty array for keys that do not apply.
 PROMPT;
     }
 
     private function input(string $body, array $detectedConfiguration): string
     {
-        $keys = [
+        return json_encode([
+            'allowed_parser_types' => ParserRegistry::keys(),
+            'allowed_configuration_keys' => $this->configurationKeys(),
+            'local_suggestion' => $detectedConfiguration,
+            'email_body' => str($body)->limit(12000, '')->toString(),
+        ], JSON_PRETTY_PRINT);
+    }
+
+    private function schema(): array
+    {
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => ['parser_type', 'parser_configuration', 'explanation'],
+            'properties' => [
+                'parser_type' => [
+                    'type' => 'string',
+                    'enum' => ParserRegistry::keys(),
+                ],
+                'parser_configuration' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => $this->configurationKeys(),
+                    'properties' => collect($this->configurationKeys())
+                        ->mapWithKeys(fn (string $key) => [$key => [
+                            'type' => 'array',
+                            'items' => ['type' => 'string'],
+                        ]])
+                        ->all(),
+                ],
+                'explanation' => [
+                    'type' => 'string',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function configurationKeys(): array
+    {
+        return [
             'serial_number_labels',
             'report_date_labels',
             'machine_name_labels',
@@ -104,38 +148,6 @@ PROMPT;
             'yellow_inserted_toner_number_labels',
             'waste_toner_status_labels',
             'service_status_labels',
-        ];
-
-        return json_encode([
-            'allowed_parser_types' => ParserRegistry::keys(),
-            'allowed_configuration_keys' => $keys,
-            'local_suggestion' => $detectedConfiguration,
-            'email_body' => str($body)->limit(12000, '')->toString(),
-        ], JSON_PRETTY_PRINT);
-    }
-
-    private function schema(): array
-    {
-        return [
-            'type' => 'object',
-            'additionalProperties' => false,
-            'required' => ['parser_type', 'parser_configuration', 'explanation'],
-            'properties' => [
-                'parser_type' => [
-                    'type' => 'string',
-                    'enum' => ParserRegistry::keys(),
-                ],
-                'parser_configuration' => [
-                    'type' => 'object',
-                    'additionalProperties' => [
-                        'type' => 'array',
-                        'items' => ['type' => 'string'],
-                    ],
-                ],
-                'explanation' => [
-                    'type' => ['string', 'null'],
-                ],
-            ],
         ];
     }
 
