@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::get('parser-queue', [ParserReviewQueueController::class, 'index'])->middleware('platform_admin')->name('parser-queue.index');
     Route::get('parser-queue/{incomingReportEmail}', [ParserReviewQueueController::class, 'show'])->middleware('platform_admin')->name('parser-queue.show');
     Route::post('parser-queue/{incomingReportEmail}/ai-suggestion', [ParserReviewQueueController::class, 'suggestWithAi'])->middleware('platform_admin')->name('parser-queue.ai-suggestion');
+    Route::post('parser-queue/{incomingReportEmail}/link-machine', [ParserReviewQueueController::class, 'linkMachine'])->middleware('platform_admin')->name('parser-queue.link-machine');
     Route::post('parser-queue/{incomingReportEmail}/approve-company', [ParserReviewQueueController::class, 'approveCompany'])->middleware('platform_admin')->name('parser-queue.approve-company');
     Route::post('parser-queue/{incomingReportEmail}/approve-global', [ParserReviewQueueController::class, 'approveGlobal'])->middleware('platform_admin')->name('parser-queue.approve-global');
     Route::resource('users', CompanyUserController::class)->middleware('company_admin');

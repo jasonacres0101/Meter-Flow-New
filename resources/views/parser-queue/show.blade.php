@@ -61,6 +61,49 @@
                 @endif
             </div>
 
+            @unless($canApprove)
+                <div class="app-panel rounded-xl p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="text-lg font-black text-slate-950">Serial Match Assistant</h2>
+                        <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{{ $serialMatchSuggestions->count() }}</span>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-500">Possible serials found in this email are compared with existing machines. Link only when the suggested machine is correct.</p>
+
+                    <div class="mt-4 space-y-3">
+                        @forelse($serialMatchSuggestions as $suggestion)
+                            <div class="rounded-lg border border-slate-200 bg-white p-4">
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div class="font-mono text-sm font-black text-slate-950">{{ $suggestion['candidate'] }}</div>
+                                        <div class="mt-1 text-xs text-slate-500">{{ $suggestion['reason'] }}</div>
+                                        @if($suggestion['machine'])
+                                            <div class="mt-3 text-sm text-slate-700">
+                                                <strong>{{ $suggestion['machine']->serial_number }}</strong>
+                                                <span class="text-slate-500">/ {{ $suggestion['machine']->manufacturer }} {{ $suggestion['machine']->model }} / {{ $suggestion['machine']->client->name }}</span>
+                                            </div>
+                                        @else
+                                            <div class="mt-3 text-sm font-semibold text-amber-800">No existing machine match found.</div>
+                                        @endif
+                                    </div>
+                                    <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+                                        <span class="rounded-full px-3 py-1 text-xs font-black {{ $suggestion['is_exact'] ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }}">{{ $suggestion['confidence'] }}% match</span>
+                                        @if($suggestion['machine'])
+                                            <form method="post" action="{{ route('parser-queue.link-machine', $email) }}">
+                                                @csrf
+                                                <input type="hidden" name="machine_id" value="{{ $suggestion['machine']->id }}">
+                                                <button class="app-button-secondary">Link and reprocess</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No serial candidates were found. Create or update the machine manually, then reprocess this email.</div>
+                        @endforelse
+                    </div>
+                </div>
+            @endunless
+
             <div class="app-panel rounded-xl p-5">
                 <div class="flex items-center justify-between gap-3">
                     <h2 class="text-lg font-black text-slate-950">Detected Fields</h2>

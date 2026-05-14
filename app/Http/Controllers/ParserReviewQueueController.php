@@ -11,6 +11,7 @@ use App\Services\Reports\AiParserSuggestionService;
 use App\Services\Reports\PendingReportReprocessor;
 use App\Services\Reports\ReportProcessingService;
 use App\Services\Reports\ReportTemplateSuggestionService;
+use App\Services\Reports\SerialMatchAssistant;
 use App\Support\ParserRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,10 @@ use Throwable;
 
 class ParserReviewQueueController extends Controller
 {
-    public function __construct(private readonly ReportTemplateSuggestionService $suggestions) {}
+    public function __construct(
+        private readonly ReportTemplateSuggestionService $suggestions,
+        private readonly SerialMatchAssistant $serialMatches,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -93,8 +97,37 @@ class ParserReviewQueueController extends Controller
             'aiSuggestion' => $aiSuggestion,
             'mappingReview' => $this->suggestions->reviewMapping($incomingReportEmail->body_text, $aiSuggestion['parser_configuration'] ?? $localConfiguration),
             'aiReviewRecommendation' => $this->suggestions->aiReviewRecommendation($incomingReportEmail->body_text, filled($incomingReportEmail->machine_id)),
+            'serialMatchSuggestions' => $incomingReportEmail->machine_id ? collect() : $this->serialMatches->suggestionsFor($incomingReportEmail),
             'parserTypes' => ParserRegistry::options(),
         ]);
+    }
+
+    public function linkMachine(IncomingReportEmail $incomingReportEmail, Request $request, ReportProcessingService $processor): RedirectResponse
+    {
+        $data = $request->validate([
+            'machine_id' => ['required', 'integer', 'exists:machines,id'],
+        ]);
+
+        $suggestion = $this->serialMatches->suggestionsFor($incomingReportEmail)
+            ->first(fn (array $suggestion) => $suggestion['machine']?->id === (int) $data['machine_id']);
+
+        if (! $suggestion) {
+            return back()->withErrors(['machine_id' => 'That machine is not a suggested serial match for this email.']);
+        }
+
+        $machine = $suggestion['machine'];
+        $incomingReportEmail->forceFill([
+            'machine_id' => $machine->id,
+            'company_id' => $machine->client->company_id,
+            'parse_status' => IncomingReportEmail::STATUS_PENDING,
+            'parse_error' => null,
+        ])->save();
+
+        $this->reprocess($incomingReportEmail, $processor);
+
+        return redirect()
+            ->route('parser-queue.show', $incomingReportEmail)
+            ->with('status', 'Email linked to '.$machine->serial_number.' and reprocessed.');
     }
 
     public function suggestWithAi(IncomingReportEmail $incomingReportEmail, AiParserSuggestionService $aiSuggestions): RedirectResponse

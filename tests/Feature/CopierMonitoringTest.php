@@ -896,6 +896,39 @@ class CopierMonitoringTest extends TestCase
             ->assertDontSee('Approve as global template');
     }
 
+    public function test_unmatched_email_can_be_linked_to_machine_from_serial_match_suggestion(): void
+    {
+        $machine = $this->sharpMachine(withTemplate: false);
+        $machine->update(['serial_number' => 'A5C4121004367']);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => null,
+            'subject' => 'Serial hidden behind odd label',
+            'body_text' => <<<TEXT
+Device Identity
+Asset ID|A5C4-121004367
+Total Counter|12345
+TEXT,
+            'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+        ]);
+
+        $this->actingAs($admin)->get(route('parser-queue.show', $email))
+            ->assertOk()
+            ->assertSee('Serial Match Assistant')
+            ->assertSee('A5C4-121004367')
+            ->assertSee('Link and reprocess');
+
+        $this->actingAs($admin)->post(route('parser-queue.link-machine', $email), [
+            'machine_id' => $machine->id,
+        ])->assertRedirect(route('parser-queue.show', $email));
+
+        $email->refresh();
+        $this->assertSame($machine->id, $email->machine_id);
+        $this->assertSame($machine->client->company_id, $email->company_id);
+        $this->assertSame(IncomingReportEmail::STATUS_PENDING_TEMPLATE, $email->parse_status);
+    }
+
     public function test_template_edit_shows_detected_fields_from_sample_body(): void
     {
         $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
