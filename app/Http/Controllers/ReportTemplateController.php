@@ -7,6 +7,7 @@ use App\Models\IncomingReportEmail;
 use App\Models\MachineModel;
 use App\Models\Manufacturer;
 use App\Models\ReportTemplate;
+use App\Services\Reports\PendingReportReprocessor;
 use App\Services\Reports\ReportProcessingService;
 use App\Support\ParserRegistry;
 use App\Support\Tenant;
@@ -103,9 +104,9 @@ class ReportTemplateController extends Controller
         ]);
     }
 
-    public function store(StoreReportTemplateRequest $request, ReportProcessingService $processor): RedirectResponse
+    public function store(StoreReportTemplateRequest $request, ReportProcessingService $processor, PendingReportReprocessor $reprocessor): RedirectResponse
     {
-        ReportTemplate::create($this->normalise($request));
+        $reportTemplate = ReportTemplate::create($this->normalise($request));
 
         if ($request->filled('incoming_report_email_id')) {
             $email = IncomingReportEmail::find($request->integer('incoming_report_email_id'));
@@ -120,12 +121,16 @@ class ReportTemplateController extends Controller
                 }
             }
 
+            $reprocessed = $reprocessor->forTemplate($reportTemplate)->count();
+
             return redirect()
                 ->route('incoming-report-emails.show', $request->integer('incoming_report_email_id'))
-                ->with('status', 'Report template created and the pending email was reprocessed.');
+                ->with('status', 'Report template created and the pending email was reprocessed.'.($reprocessed ? " {$reprocessed} other pending email(s) for this model were also parsed." : ''));
         }
 
-        return redirect()->route('report-templates.index')->with('status', 'Report template created.');
+        $reprocessed = $reprocessor->forTemplate($reportTemplate)->count();
+
+        return redirect()->route('report-templates.index')->with('status', 'Report template created.'.($reprocessed ? " {$reprocessed} pending email(s) for this model were parsed." : ''));
     }
 
     public function show(ReportTemplate $reportTemplate): View
@@ -158,13 +163,14 @@ class ReportTemplateController extends Controller
         ]);
     }
 
-    public function update(StoreReportTemplateRequest $request, ReportTemplate $reportTemplate): RedirectResponse
+    public function update(StoreReportTemplateRequest $request, ReportTemplate $reportTemplate, PendingReportReprocessor $reprocessor): RedirectResponse
     {
         $this->authorizeTenant($reportTemplate);
         abort_if(! $request->user()->isPlatformAdmin() && is_null($reportTemplate->company_id), 403);
         $reportTemplate->update($this->normalise($request, $reportTemplate));
+        $reprocessed = $reprocessor->forTemplate($reportTemplate->fresh())->count();
 
-        return redirect()->route('report-templates.show', $reportTemplate)->with('status', 'Report template updated.');
+        return redirect()->route('report-templates.show', $reportTemplate)->with('status', 'Report template updated.'.($reprocessed ? " {$reprocessed} pending email(s) for this model were parsed." : ''));
     }
 
     public function approveGlobal(ReportTemplate $reportTemplate): RedirectResponse
