@@ -158,6 +158,72 @@ class ReportTemplateSuggestionService
             ->all();
     }
 
+    /**
+     * @param  array<string, array<int, string>>  $configuration
+     * @return array{mapped_count: int, missing_count: int, unused_count: int, rows: array<int, array{key: string, label: string, status: string, tone: string, note: string}>, unused_fields: array<int, array{label: string, value: string}>}
+     */
+    public function reviewMapping(string $body, array $configuration): array
+    {
+        $fields = $this->detectedFields($body);
+        $detected = $fields
+            ->mapWithKeys(fn (array $field) => [$this->normaliseLabel($field['label']) => $field])
+            ->all();
+        $used = [];
+
+        $rows = collect($configuration)
+            ->filter(fn ($labels, string $key) => str_ends_with($key, '_labels') && is_array($labels))
+            ->flatMap(function (array $labels, string $key) use ($detected, &$used) {
+                if ($labels === []) {
+                    return [[
+                        'key' => $key,
+                        'label' => '',
+                        'status' => 'missing',
+                        'tone' => 'bg-slate-50 text-slate-600',
+                        'note' => 'No label selected for this parser field.',
+                    ]];
+                }
+
+                return collect($labels)->map(function (string $label) use ($key, $detected, &$used) {
+                    $normalised = $this->normaliseLabel($label);
+
+                    if (isset($detected[$normalised])) {
+                        $used[$normalised] = true;
+
+                        return [
+                            'key' => $key,
+                            'label' => $label,
+                            'status' => 'matched',
+                            'tone' => 'bg-emerald-50 text-emerald-700',
+                            'note' => 'Found in the email.',
+                        ];
+                    }
+
+                    return [
+                        'key' => $key,
+                        'label' => $label,
+                        'status' => 'not found',
+                        'tone' => 'bg-rose-50 text-rose-700',
+                        'note' => 'AI mapped this label, but it was not found in the detected email fields.',
+                    ];
+                });
+            })
+            ->values()
+            ->all();
+
+        $unusedFields = $fields
+            ->reject(fn (array $field) => isset($used[$this->normaliseLabel($field['label'])]))
+            ->values()
+            ->all();
+
+        return [
+            'mapped_count' => collect($rows)->where('status', 'matched')->count(),
+            'missing_count' => collect($rows)->whereIn('status', ['missing', 'not found'])->count(),
+            'unused_count' => count($unusedFields),
+            'rows' => $rows,
+            'unused_fields' => $unusedFields,
+        ];
+    }
+
     private function confidenceLabel(int $score): string
     {
         return match (true) {
@@ -165,5 +231,10 @@ class ReportTemplateSuggestionService
             $score >= 45 => 'Medium',
             default => 'Low',
         };
+    }
+
+    private function normaliseLabel(string $label): string
+    {
+        return str($label)->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
     }
 }

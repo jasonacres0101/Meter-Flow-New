@@ -72,6 +72,7 @@ class ParserReviewQueueController extends Controller
                 ?? $incomingReportEmail->machine?->machineModel?->parser_type
                 ?? $this->suggestions->suggestParserType($incomingReportEmail->body_text),
             'aiSuggestion' => $aiSuggestion,
+            'mappingReview' => $this->suggestions->reviewMapping($incomingReportEmail->body_text, $aiSuggestion['parser_configuration'] ?? $localConfiguration),
             'aiReviewRecommendation' => $this->suggestions->aiReviewRecommendation($incomingReportEmail->body_text, filled($incomingReportEmail->machine_id)),
             'parserTypes' => ParserRegistry::options(),
         ]);

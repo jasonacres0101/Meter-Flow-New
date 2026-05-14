@@ -713,6 +713,9 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('AI draft')
             ->assertSee('AI confidence 86%')
             ->assertSee('Pipe-separated toner report mapped from exact labels.')
+            ->assertSee('Mapping Review')
+            ->assertSee('matched')
+            ->assertSee('not found')
             ->assertSee('magenta_toner_percentage_labels')
             ->assertSee('Magenta Toner');
     }

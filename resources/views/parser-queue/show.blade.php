@@ -111,6 +111,58 @@
                     <textarea name="parser_configuration" class="app-field-control h-72 font-mono text-xs">{{ $configurationJson }}</textarea>
                 </label>
 
+                <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 class="font-black text-slate-950">Mapping Review</h3>
+                            <p class="mt-1 text-sm text-slate-600">Check these fields before approving. Any red row should be fixed in the JSON mapping first.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs font-black">
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">{{ $mappingReview['mapped_count'] }} matched</span>
+                            <span class="rounded-full bg-rose-50 px-3 py-1 text-rose-700">{{ $mappingReview['missing_count'] }} needs review</span>
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{{ $mappingReview['unused_count'] }} unused detected</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="bg-slate-50 text-left text-xs font-black uppercase tracking-wide text-slate-500">
+                                <tr>
+                                    <th class="px-3 py-2">Parser field</th>
+                                    <th class="px-3 py-2">Mapped label</th>
+                                    <th class="px-3 py-2">Review</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($mappingReview['rows'] as $row)
+                                    <tr>
+                                        <td class="px-3 py-2 font-mono text-xs text-slate-700">{{ $row['key'] }}</td>
+                                        <td class="px-3 py-2 font-semibold text-slate-950">{{ $row['label'] ?: 'Not mapped' }}</td>
+                                        <td class="px-3 py-2">
+                                            <span class="rounded-full px-2.5 py-1 text-xs font-black {{ $row['tone'] }}">{{ $row['status'] }}</span>
+                                            <span class="ml-2 text-xs text-slate-500">{{ $row['note'] }}</span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if($mappingReview['unused_count'])
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-sm font-bold text-slate-700">Show unused detected fields</summary>
+                            <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                                @foreach($mappingReview['unused_fields'] as $field)
+                                    <div class="rounded-lg bg-white p-3 text-sm">
+                                        <div class="font-black text-slate-950">{{ $field['label'] }}</div>
+                                        <div class="mt-1 truncate font-mono text-xs text-slate-500">{{ $field['value'] }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
+                </div>
+
                 <div class="mt-4 grid gap-2 sm:grid-cols-2">
                     <button class="app-button" @disabled(! $canApprove)>Approve for this account</button>
                     <button
