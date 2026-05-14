@@ -789,6 +789,42 @@ class CopierMonitoringTest extends TestCase
         ]);
     }
 
+    public function test_ai_parser_suggestion_can_be_approved_from_saved_session_draft(): void
+    {
+        $machine = $this->sharpMachine(withTemplate: false);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $machine->client->company_id,
+            'machine_id' => $machine->id,
+            'body_text' => $this->sharpFixture(),
+            'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+        ]);
+        $configuration = [
+            'serial_number_labels' => ['Serial Number'],
+            'black_toner_percentage_labels' => ['Black Toner'],
+        ];
+
+        $this->actingAs($admin)
+            ->withSession([
+                "ai_parser_suggestions.{$email->id}" => [
+                    'email_id' => $email->id,
+                    'parser_type' => 'sharp_mx_status_email',
+                    'parser_configuration' => $configuration,
+                    'explanation' => 'Saved AI draft.',
+                    'confidence_score' => 90,
+                ],
+            ])
+            ->post(route('parser-queue.approve-company', $email))
+            ->assertRedirect(route('parser-queue.show', $email));
+
+        $template = ReportTemplate::where('machine_model_id', $machine->machine_model_id)->latest('id')->first();
+
+        $this->assertNotNull($template);
+        $this->assertSame('sharp_mx_status_email', $template->parser_type);
+        $this->assertSame($configuration, $template->parser_configuration);
+        $this->assertFalse(session()->has("ai_parser_suggestions.{$email->id}"));
+    }
+
     public function test_unmatched_email_can_start_template_wizard_from_detected_model(): void
     {
         $company = Client::factory()->create()->company;

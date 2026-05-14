@@ -60,9 +60,7 @@ class ParserReviewQueueController extends Controller
     {
         $incomingReportEmail->load(['company', 'machine.client', 'machine.machineModel']);
         $localConfiguration = $this->suggestions->suggestParserConfiguration($incomingReportEmail->body_text);
-        $aiSuggestion = session('ai_parser_suggestion.email_id') === $incomingReportEmail->id
-            ? session('ai_parser_suggestion')
-            : null;
+        $aiSuggestion = session("ai_parser_suggestions.{$incomingReportEmail->id}");
 
         return view('parser-queue.show', [
             'email' => $incomingReportEmail,
@@ -88,13 +86,14 @@ class ParserReviewQueueController extends Controller
             return back()->withErrors(['ai' => 'AI suggestion failed: '.$exception->getMessage()]);
         }
 
+        session()->put("ai_parser_suggestions.{$incomingReportEmail->id}", [
+            'email_id' => $incomingReportEmail->id,
+            ...$suggestion,
+        ]);
+
         return redirect()
             ->route('parser-queue.show', $incomingReportEmail)
-            ->with('status', 'AI parser suggestion generated. Review it before approving.')
-            ->with('ai_parser_suggestion', [
-                'email_id' => $incomingReportEmail->id,
-                ...$suggestion,
-            ]);
+            ->with('status', 'AI parser suggestion generated. Review it before approving.');
     }
 
     public function approveCompany(IncomingReportEmail $incomingReportEmail, Request $request, ReportProcessingService $processor, PendingReportReprocessor $reprocessor): RedirectResponse
@@ -145,11 +144,14 @@ class ParserReviewQueueController extends Controller
 
     private function createTemplate(IncomingReportEmail $email, Request $request, MachineModel $machineModel, ?int $companyId, string $approvalStatus): ReportTemplate
     {
+        $sessionSuggestion = session("ai_parser_suggestions.{$email->id}", []);
+
         $request->merge([
-            'parser_type' => $request->input('parser_type') ?: $request->input('ai_parser_type'),
+            'parser_type' => $request->input('parser_type') ?: $request->input('ai_parser_type') ?: ($sessionSuggestion['parser_type'] ?? null),
             'parser_configuration' => filled($request->input('parser_configuration'))
                 ? $request->input('parser_configuration')
-                : $request->input('ai_parser_configuration'),
+                : ($request->input('ai_parser_configuration')
+                    ?: (isset($sessionSuggestion['parser_configuration']) ? json_encode($sessionSuggestion['parser_configuration']) : null)),
         ]);
 
         $data = $request->validate([
@@ -160,7 +162,7 @@ class ParserReviewQueueController extends Controller
         ]);
         $familyKey = $this->familyKey($machineModel, $data['parser_type']);
 
-        return ReportTemplate::create([
+        $template = ReportTemplate::create([
             'machine_model_id' => $machineModel->id,
             'company_id' => $companyId,
             'template_name' => trim($machineModel->manufacturer.' '.$machineModel->model_name),
@@ -175,6 +177,10 @@ class ParserReviewQueueController extends Controller
             'approved_at' => $companyId === null ? now() : null,
             'approved_by' => $companyId === null ? request()->user()->id : null,
         ]);
+
+        session()->forget("ai_parser_suggestions.{$email->id}");
+
+        return $template;
     }
 
     private function logApproval(IncomingReportEmail $email, ReportTemplate $template, string $scope): void
