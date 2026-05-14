@@ -193,7 +193,7 @@ class ReportTemplateSuggestionService
                         return [
                             'key' => $key,
                             'label' => $label,
-                            'value' => (string) $detected[$normalised]['value'],
+                            'value' => $this->reviewValue($key, (string) $detected[$normalised]['value']),
                             'status' => 'matched',
                             'tone' => 'bg-emerald-50 text-emerald-700',
                             'note' => 'Found in the email.',
@@ -239,5 +239,36 @@ class ReportTemplateSuggestionService
     private function normaliseLabel(string $label): string
     {
         return str($label)->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
+    }
+
+    private function reviewValue(string $key, string $value): string
+    {
+        $value = trim($value);
+        $parts = collect(preg_split('/[,\|]/', $value) ?: [])
+            ->map(fn (string $part) => trim($part))
+            ->filter(fn (string $part) => filled($part))
+            ->values();
+
+        if ($parts->count() <= 1) {
+            return $value;
+        }
+
+        if (str_contains($key, 'toner_percentage')) {
+            return $parts->first(fn (string $part) => preg_match('/\d+\s*%/', $part)) ?? $parts->first();
+        }
+
+        if (str_contains($key, 'status')) {
+            return $parts->first(fn (string $part) => preg_match('/^[A-Z][A-Z\s_-]{1,30}$/', $part)) ?? $parts->first();
+        }
+
+        if (str_contains($key, 'counter') || str_contains($key, 'inserted_toner_number')) {
+            return $parts->first(fn (string $part) => preg_match('/\d/', $part)) ?? $parts->first();
+        }
+
+        if (str_contains($key, 'date')) {
+            return $parts->first(fn (string $part) => preg_match('/\d{2,4}[-\/]\d{1,2}[-\/]\d{1,4}/', $part)) ?? $parts->first();
+        }
+
+        return $parts->first();
     }
 }

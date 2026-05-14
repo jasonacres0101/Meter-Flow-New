@@ -716,7 +716,7 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('Mapping Review')
             ->assertSee('matched')
             ->assertSee('not found')
-            ->assertSee('38%|OK')
+            ->assertSee('38%')
             ->assertSee('magenta_toner_percentage_labels')
             ->assertSee('Magenta Toner');
     }
