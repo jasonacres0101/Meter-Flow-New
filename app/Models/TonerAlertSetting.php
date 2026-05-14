@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\TonerAlertSettingFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,29 @@ class TonerAlertSetting extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    protected function notificationEmails(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value): array {
+                if (is_array($value)) {
+                    return $value;
+                }
+
+                $decoded = is_string($value) ? json_decode($value, true) : null;
+
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+
+                return collect(preg_split('/[\r\n,]+/', (string) $value))
+                    ->map(fn (string $email) => trim($email))
+                    ->filter()
+                    ->values()
+                    ->all();
+            },
+        );
     }
 
     public static function defaults(?int $companyId = null): self

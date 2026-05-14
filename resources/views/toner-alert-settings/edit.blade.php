@@ -1,4 +1,11 @@
 <x-layouts.app title="Toner Alerts">
+    @php
+        $notificationEmails = $setting->notification_emails;
+        $notificationEmails = is_array($notificationEmails)
+            ? $notificationEmails
+            : collect(preg_split('/[\r\n,]+/', (string) $notificationEmails))->map(fn ($email) => trim($email))->filter()->values()->all();
+    @endphp
+
     <div class="mb-6">
         <h1 class="text-2xl font-black">Toner Alert Settings</h1>
         <p class="mt-1 text-sm text-slate-500">Set company-wide toner warning and critical thresholds for dashboard alerts and parsed readings.</p>
@@ -48,7 +55,7 @@
             </div>
 
             <label class="mt-5 block text-sm font-semibold text-slate-700">Notification emails
-                <textarea name="notification_emails" class="mt-2 h-24 w-full rounded-lg border-zinc-300 px-3 py-2.5" placeholder="service@example.com, alerts@example.com">{{ old('notification_emails', implode(', ', $setting->notification_emails ?? [])) }}</textarea>
+                <textarea name="notification_emails" class="mt-2 h-24 w-full rounded-lg border-zinc-300 px-3 py-2.5" placeholder="service@example.com, alerts@example.com">{{ old('notification_emails', implode(', ', $notificationEmails)) }}</textarea>
             </label>
 
             @if ($errors->any())<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700">{{ $errors->first() }}</div>@endif

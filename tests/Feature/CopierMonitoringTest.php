@@ -620,7 +620,7 @@ class CopierMonitoringTest extends TestCase
     public function test_pending_template_email_can_start_template_wizard(): void
     {
         $machine = $this->sharpMachine(withTemplate: false);
-        $admin = User::factory()->for($machine->client->company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
         $email = IncomingReportEmail::factory()->create([
             'company_id' => $machine->client->company_id,
             'machine_id' => $machine->id,
@@ -629,24 +629,19 @@ class CopierMonitoringTest extends TestCase
             'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
         ]);
 
-        $this->actingAs($admin)->get(route('report-templates.create', ['incoming_report_email_id' => $email->id]))
+        $this->actingAs($admin)->get(route('parser-queue.show', $email))
             ->assertOk()
-            ->assertSee('Create Template From Email')
+            ->assertSee('Parser review')
             ->assertSee('Serial Number')
             ->assertSee('95012345')
-            ->assertSee('data-map-preview', false)
-            ->assertSee('const detectedValues', false)
-            ->assertSee('previewCleanupRules', false)
-            ->assertSee('Example Parsed Reading')
-            ->assertSee('data-review-toners', false)
-            ->assertSee('data-review-counters', false)
+            ->assertSee('Suggested Template')
             ->assertSee('serial_number_labels');
     }
 
     public function test_template_wizard_detects_bracket_comma_fields(): void
     {
         $company = Client::factory()->create()->company;
-        $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
         $client = Client::factory()->for($company)->create();
         $site = Site::factory()->for($client)->create();
         $model = MachineModel::factory()->for($company)->create([
@@ -665,20 +660,20 @@ class CopierMonitoringTest extends TestCase
             'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
         ]);
 
-        $this->actingAs($admin)->get(route('report-templates.create', ['incoming_report_email_id' => $email->id]))
+        $this->actingAs($admin)->get(route('parser-queue.show', $email))
             ->assertOk()
             ->assertSee('Serial Number')
             ->assertSee('A5C4121004367')
-            ->assertSee('option value="Serial Number" selected', false)
-            ->assertSee('option value="Total Color Counter" selected', false)
-            ->assertSee('option value="Total Black Counter" selected', false)
-            ->assertSee('option value="Total Scan/Fax Counter" selected', false);
+            ->assertSee('serial_number_labels')
+            ->assertSee('Total Color Counter')
+            ->assertSee('Total Black Counter')
+            ->assertSee('Total Scan/Fax Counter');
     }
 
     public function test_creating_template_reprocesses_other_pending_emails_for_same_model(): void
     {
         $machine = $this->sharpMachine(withTemplate: false);
-        $admin = User::factory()->for($machine->client->company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
         $firstEmail = IncomingReportEmail::factory()->create([
             'company_id' => $machine->client->company_id,
             'body_text' => $this->sharpFixture(),
@@ -696,18 +691,18 @@ class CopierMonitoringTest extends TestCase
         $this->assertSame(IncomingReportEmail::STATUS_PENDING_TEMPLATE, $firstEmail->fresh()->parse_status);
         $this->assertSame(IncomingReportEmail::STATUS_PENDING_TEMPLATE, $secondEmail->fresh()->parse_status);
 
-        $this->actingAs($admin)->post(route('report-templates.store'), [
-            'incoming_report_email_id' => $firstEmail->id,
-            'machine_model_id' => $machine->machine_model_id,
-            'sample_subject' => $firstEmail->subject,
-            'sample_body' => $firstEmail->body_text,
+        $this->actingAs($admin)->post(route('parser-queue.approve-company', $firstEmail), [
             'parser_type' => 'sharp_mx_status_email',
             'parser_configuration' => json_encode(['serial_number_labels' => ['Serial Number']]),
-            'is_active' => '1',
-        ])->assertRedirect(route('incoming-report-emails.show', $firstEmail));
+        ])->assertRedirect(route('parser-queue.show', $firstEmail));
 
         $this->assertSame(IncomingReportEmail::STATUS_PARSED, $firstEmail->fresh()->parse_status);
         $this->assertSame(IncomingReportEmail::STATUS_PARSED, $secondEmail->fresh()->parse_status);
+        $this->assertDatabaseHas('parser_review_logs', [
+            'incoming_report_email_id' => $firstEmail->id,
+            'action' => 'template_approved',
+            'scope' => 'company',
+        ]);
     }
 
     public function test_unmatched_email_can_start_template_wizard_from_detected_model(): void

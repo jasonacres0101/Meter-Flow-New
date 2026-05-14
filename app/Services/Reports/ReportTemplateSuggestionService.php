@@ -64,23 +64,17 @@ class ReportTemplateSuggestionService
             ->pluck('label')
             ->filter(function (string $label) use ($needles) {
                 $lower = str($label)->lower()->toString();
+                $normalisedLabel = str($label)->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
 
-                return collect($needles)->contains(function (string $needle) use ($lower) {
+                return collect($needles)->contains(function (string $needle) use ($lower, $normalisedLabel) {
                     $needle = str($needle)->lower()->toString();
+                    $normalisedNeedle = str($needle)->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
 
                     if (str_contains($lower, $needle)) {
                         return true;
                     }
 
-                    if (str_contains($needle, '(')) {
-                        return false;
-                    }
-
-                    $words = collect(preg_split('/[^a-z0-9]+/', $needle))
-                        ->filter(fn (string $word) => strlen($word) > 1);
-
-                    return $words->isNotEmpty()
-                        && $words->every(fn (string $word) => str_contains($lower, $word));
+                    return filled($normalisedNeedle) && str_contains($normalisedLabel, $normalisedNeedle);
                 });
             })
             ->unique()
