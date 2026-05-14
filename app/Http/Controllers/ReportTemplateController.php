@@ -366,7 +366,12 @@ class ReportTemplateController extends Controller
                         return true;
                     }
 
-                    $words = collect(preg_split('/[^a-z0-9]+/', $needle))->filter();
+                    if (str_contains($needle, '(')) {
+                        return false;
+                    }
+
+                    $words = collect(preg_split('/[^a-z0-9]+/', $needle))
+                        ->filter(fn (string $word) => strlen($word) > 1);
 
                     return $words->isNotEmpty()
                         && $words->every(fn (string $word) => str_contains($lower, $word));
