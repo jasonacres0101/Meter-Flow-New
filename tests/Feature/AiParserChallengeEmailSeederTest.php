@@ -35,14 +35,21 @@ class AiParserChallengeEmailSeederTest extends TestCase
             'subject' => 'AI TEST - unmatched csv counter report',
             'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
         ]);
+        $this->assertDatabaseHas('incoming_report_emails', [
+            'subject' => 'AI TEST - hidden serial recovery report',
+            'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+        ]);
 
         $matched = IncomingReportEmail::where('subject', 'AI TEST - matched pipe toner report')->firstOrFail();
         $unmatched = IncomingReportEmail::where('subject', 'AI TEST - unmatched pipe toner report')->firstOrFail();
+        $hidden = IncomingReportEmail::where('subject', 'AI TEST - hidden serial recovery report')->firstOrFail();
 
         $this->assertNotNull($matched->machine_id);
         $this->assertNull($unmatched->machine_id);
+        $this->assertNull($hidden->machine_id);
         $this->assertStringContainsString('Magenta Toner|19%|LOW', $matched->body_text);
         $this->assertStringContainsString('Serial Ref|AI-DEMO-NOMATCH-004', $unmatched->body_text);
+        $this->assertStringContainsString('Asset ID|AI-DEMO-HIDDEN-006', $hidden->body_text);
     }
 
     public function test_it_is_idempotent(): void
@@ -50,6 +57,6 @@ class AiParserChallengeEmailSeederTest extends TestCase
         $this->seed(AiParserChallengeEmailSeeder::class);
         $this->seed(AiParserChallengeEmailSeeder::class);
 
-        $this->assertSame(5, IncomingReportEmail::where('subject', 'like', 'AI TEST -%')->count());
+        $this->assertSame(6, IncomingReportEmail::where('subject', 'like', 'AI TEST -%')->count());
     }
 }

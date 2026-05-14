@@ -259,5 +259,41 @@ TEXT,
                 'parse_error' => null,
             ],
         );
+
+        IncomingReportEmail::updateOrCreate(
+            ['company_id' => $company->id, 'subject' => 'AI TEST - hidden serial recovery report'],
+            [
+                'machine_id' => null,
+                'from_email' => 'ai-hidden-serial@example.test',
+                'to_email' => 'reports@example.test',
+                'received_at' => now()->addSecond(),
+                'body_text' => <<<TEXT
+Hidden Serial Recovery Sample
+Report Sent|2026-05-14 16:20:00
+Device Label|Training Room Recovery Copier
+Model Ref|AI-UNKNOWN-5000
+Asset ID|AI-DEMO-HIDDEN-006
+
+Counters
+Grand Total|00456789 pages
+Mono Total|00391234 pages
+Colour Total|00065555 pages
+Scan Images|00008765
+
+Consumables
+Black Toner|47%|OK
+Cyan Toner|52%|OK
+Magenta Toner|31%|OK
+Yellow Toner|28%|OK
+Waste Toner Container||OK
+
+The normal matcher should not read Asset ID as a serial number. Create a machine with serial AI-DEMO-HIDDEN-006, then use Serial Match Assistant to link and reprocess this email.
+TEXT,
+                'raw_payload' => ['seeded' => true, 'purpose' => 'ai_parser_challenge_hidden_serial_recovery'],
+                'parsed_payload' => null,
+                'parse_status' => IncomingReportEmail::STATUS_UNMATCHED,
+                'parse_error' => null,
+            ],
+        );
     }
 }
