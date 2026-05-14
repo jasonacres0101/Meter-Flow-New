@@ -23,6 +23,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CopierMonitoringTest extends TestCase
@@ -668,6 +669,48 @@ class CopierMonitoringTest extends TestCase
             ->assertSee('Total Color Counter')
             ->assertSee('Total Black Counter')
             ->assertSee('Total Scan/Fax Counter');
+    }
+
+    public function test_platform_admin_can_generate_ai_parser_suggestion(): void
+    {
+        config()->set('services.openai.key', 'test-key');
+        config()->set('services.openai.model', 'gpt-test-parser');
+
+        Http::fake([
+            'api.openai.com/v1/responses' => Http::response([
+                'output_text' => json_encode([
+                    'parser_type' => 'generic_counter_email',
+                    'parser_configuration' => [
+                        'serial_number_labels' => ['Serial Number'],
+                        'magenta_toner_percentage_labels' => ['Magenta Toner'],
+                        'waste_toner_status_labels' => ['Waste Toner Container'],
+                    ],
+                    'explanation' => 'Pipe-separated toner report mapped from exact labels.',
+                ]),
+            ], 200),
+        ]);
+
+        $company = Client::factory()->create()->company;
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $email = IncomingReportEmail::factory()->create([
+            'company_id' => $company->id,
+            'body_text' => $this->xeroxTableFixture(),
+            'parse_status' => IncomingReportEmail::STATUS_PENDING_TEMPLATE,
+        ]);
+
+        $this->actingAs($admin)->post(route('parser-queue.ai-suggestion', $email))
+            ->assertRedirect(route('parser-queue.show', $email));
+
+        Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer test-key')
+            && $request['model'] === 'gpt-test-parser'
+            && $request['text']['format']['type'] === 'json_schema');
+
+        $this->actingAs($admin)->get(route('parser-queue.show', $email))
+            ->assertOk()
+            ->assertSee('AI draft')
+            ->assertSee('Pipe-separated toner report mapped from exact labels.')
+            ->assertSee('magenta_toner_percentage_labels')
+            ->assertSee('Magenta Toner');
     }
 
     public function test_creating_template_reprocesses_other_pending_emails_for_same_model(): void

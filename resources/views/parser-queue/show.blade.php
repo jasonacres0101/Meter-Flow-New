@@ -2,6 +2,7 @@
     @php
         $configurationJson = json_encode($suggestedConfiguration, JSON_PRETTY_PRINT);
         $canApprove = filled($email->machine_id);
+        $hasAiSuggestion = filled($aiSuggestion);
     @endphp
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -10,8 +11,18 @@
             <h1 class="app-page-title mt-2">{{ $email->subject ?: 'Incoming report' }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $email->company?->name ?? 'Unknown account' }} / {{ $email->from_email ?: 'Unknown sender' }}</p>
         </div>
-        <a href="{{ route('parser-queue.index') }}" class="app-button-secondary">Back to queue</a>
+        <div class="flex flex-wrap gap-2">
+            <form method="post" action="{{ route('parser-queue.ai-suggestion', $email) }}">
+                @csrf
+                <button class="app-button">Ask AI for mapping</button>
+            </form>
+            <a href="{{ route('parser-queue.index') }}" class="app-button-secondary">Back to queue</a>
+        </div>
     </div>
+
+    @if($errors->has('ai'))
+        <div class="mb-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{{ $errors->first('ai') }}</div>
+    @endif
 
     @unless($canApprove)
         <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -61,8 +72,12 @@
                         <h2 class="text-lg font-black text-slate-950">Suggested Template</h2>
                         <p class="mt-1 text-sm text-slate-500">Review the mapping, then approve it for this account or promote it to the global parser library.</p>
                     </div>
-                    <span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-700">Draft</span>
+                    <span class="rounded-full px-3 py-1 text-xs font-black {{ $hasAiSuggestion ? 'bg-purple-50 text-purple-700' : 'bg-teal-50 text-teal-700' }}">{{ $hasAiSuggestion ? 'AI draft' : 'Draft' }}</span>
                 </div>
+
+                @if($hasAiSuggestion && filled($aiSuggestion['explanation'] ?? null))
+                    <div class="mt-4 rounded-lg bg-purple-50 p-3 text-sm text-purple-900">{{ $aiSuggestion['explanation'] }}</div>
+                @endif
 
                 <label class="app-field mt-4">Parser type
                     <select name="parser_type" class="app-field-control">

@@ -7,6 +7,7 @@ use App\Models\MachineModel;
 use App\Models\Manufacturer;
 use App\Models\ParserReviewLog;
 use App\Models\ReportTemplate;
+use App\Services\Reports\AiParserSuggestionService;
 use App\Services\Reports\PendingReportReprocessor;
 use App\Services\Reports\ReportProcessingService;
 use App\Services\Reports\ReportTemplateSuggestionService;
@@ -54,15 +55,40 @@ class ParserReviewQueueController extends Controller
     public function show(IncomingReportEmail $incomingReportEmail): View
     {
         $incomingReportEmail->load(['company', 'machine.client', 'machine.machineModel']);
+        $localConfiguration = $this->suggestions->suggestParserConfiguration($incomingReportEmail->body_text);
+        $aiSuggestion = session('ai_parser_suggestion.email_id') === $incomingReportEmail->id
+            ? session('ai_parser_suggestion')
+            : null;
 
         return view('parser-queue.show', [
             'email' => $incomingReportEmail,
             'detectedFields' => $this->suggestions->detectedFields($incomingReportEmail->body_text),
-            'suggestedConfiguration' => $this->suggestions->suggestParserConfiguration($incomingReportEmail->body_text),
-            'suggestedParserType' => $incomingReportEmail->machine?->machineModel?->parser_type
+            'suggestedConfiguration' => $aiSuggestion['parser_configuration'] ?? $localConfiguration,
+            'suggestedParserType' => $aiSuggestion['parser_type']
+                ?? $incomingReportEmail->machine?->machineModel?->parser_type
                 ?? $this->suggestions->suggestParserType($incomingReportEmail->body_text),
+            'aiSuggestion' => $aiSuggestion,
             'parserTypes' => ParserRegistry::options(),
         ]);
+    }
+
+    public function suggestWithAi(IncomingReportEmail $incomingReportEmail, AiParserSuggestionService $aiSuggestions): RedirectResponse
+    {
+        $localConfiguration = $this->suggestions->suggestParserConfiguration($incomingReportEmail->body_text);
+
+        try {
+            $suggestion = $aiSuggestions->suggest($incomingReportEmail->body_text, $localConfiguration);
+        } catch (Throwable $exception) {
+            return back()->withErrors(['ai' => 'AI suggestion failed: '.$exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('parser-queue.show', $incomingReportEmail)
+            ->with('status', 'AI parser suggestion generated. Review it before approving.')
+            ->with('ai_parser_suggestion', [
+                'email_id' => $incomingReportEmail->id,
+                ...$suggestion,
+            ]);
     }
 
     public function approveCompany(IncomingReportEmail $incomingReportEmail, Request $request, ReportProcessingService $processor, PendingReportReprocessor $reprocessor): RedirectResponse
