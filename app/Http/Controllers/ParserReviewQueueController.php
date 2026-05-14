@@ -49,6 +49,10 @@ class ParserReviewQueueController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+        $emails->getCollection()->each(function (IncomingReportEmail $email): void {
+            $email->setAttribute('ai_review_recommendation', $this->suggestions->aiReviewRecommendation($email->body_text, filled($email->machine_id)));
+        });
+
         return view('parser-queue.index', ['emails' => $emails]);
     }
 
@@ -68,6 +72,7 @@ class ParserReviewQueueController extends Controller
                 ?? $incomingReportEmail->machine?->machineModel?->parser_type
                 ?? $this->suggestions->suggestParserType($incomingReportEmail->body_text),
             'aiSuggestion' => $aiSuggestion,
+            'aiReviewRecommendation' => $this->suggestions->aiReviewRecommendation($incomingReportEmail->body_text, filled($incomingReportEmail->machine_id)),
             'parserTypes' => ParserRegistry::options(),
         ]);
     }

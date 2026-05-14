@@ -58,6 +58,82 @@ class ReportTemplateSuggestionService
             : 'generic_counter_email';
     }
 
+    /**
+     * @return array{should_run_ai: bool, confidence_score: int, confidence_label: string, label: string, tone: string, reason: string}
+     */
+    public function aiReviewRecommendation(string $body, bool $hasMachineMatch): array
+    {
+        $fields = $this->detectedFields($body);
+        $configuration = $this->suggestParserConfiguration($body);
+        $mappedLabels = collect($configuration)->flatten()->count();
+        $hasSerial = filled($configuration['serial_number_labels'] ?? []);
+        $hasCounters = collect([
+            'total_counter_labels',
+            'mono_counter_labels',
+            'colour_counter_labels',
+            'copy_mono_counter_labels',
+            'copy_colour_counter_labels',
+            'print_mono_counter_labels',
+            'print_colour_counter_labels',
+            'scan_counter_labels',
+        ])->contains(fn (string $key) => filled($configuration[$key] ?? []));
+        $hasToners = collect([
+            'black_toner_percentage_labels',
+            'cyan_toner_percentage_labels',
+            'magenta_toner_percentage_labels',
+            'yellow_toner_percentage_labels',
+            'waste_toner_status_labels',
+        ])->contains(fn (string $key) => filled($configuration[$key] ?? []));
+
+        $score = min(90, ($fields->count() * 5) + ($mappedLabels * 8));
+        $score += $hasSerial ? 15 : 0;
+        $score += $hasCounters ? 15 : 0;
+        $score += $hasToners ? 10 : 0;
+        $score = max(5, min(95, $score));
+
+        if (! $hasMachineMatch) {
+            return [
+                'should_run_ai' => true,
+                'confidence_score' => min($score, 60),
+                'confidence_label' => $this->confidenceLabel(min($score, 60)),
+                'label' => 'AI useful',
+                'tone' => 'bg-amber-50 text-amber-700',
+                'reason' => 'The email is not matched to a machine yet. AI can still draft the mapping, but approve it only after the machine is matched.',
+            ];
+        }
+
+        if ($score >= 75 && $hasSerial && ($hasCounters || $hasToners)) {
+            return [
+                'should_run_ai' => false,
+                'confidence_score' => $score,
+                'confidence_label' => $this->confidenceLabel($score),
+                'label' => 'AI optional',
+                'tone' => 'bg-emerald-50 text-emerald-700',
+                'reason' => 'Local detection found the main fields. Review the draft first; use AI only if the mapping looks incomplete.',
+            ];
+        }
+
+        if ($score >= 45) {
+            return [
+                'should_run_ai' => true,
+                'confidence_score' => $score,
+                'confidence_label' => $this->confidenceLabel($score),
+                'label' => 'AI recommended',
+                'tone' => 'bg-amber-50 text-amber-700',
+                'reason' => 'Some fields were detected, but the mapping may miss counters or toner labels. AI should improve the draft.',
+            ];
+        }
+
+        return [
+            'should_run_ai' => true,
+            'confidence_score' => $score,
+            'confidence_label' => $this->confidenceLabel($score),
+            'label' => 'Run AI',
+            'tone' => 'bg-rose-50 text-rose-700',
+            'reason' => 'Local detection found very few usable labels. Run AI before approving this template.',
+        ];
+    }
+
     public function labelsLike(Collection $fields, array $needles): array
     {
         return $fields
@@ -80,5 +156,14 @@ class ReportTemplateSuggestionService
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function confidenceLabel(int $score): string
+    {
+        return match (true) {
+            $score >= 75 => 'High',
+            $score >= 45 => 'Medium',
+            default => 'Low',
+        };
     }
 }

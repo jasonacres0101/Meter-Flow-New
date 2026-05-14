@@ -11,7 +11,7 @@ use RuntimeException;
 class AiParserSuggestionService
 {
     /**
-     * @return array{parser_type: string, parser_configuration: array<string, array<int, string>>, explanation: string|null}
+     * @return array{parser_type: string, parser_configuration: array<string, array<int, string>>, explanation: string|null, confidence_score: int}
      *
      * @throws RequestException
      */
@@ -75,6 +75,7 @@ Prefer generic_counter_email for unknown or pipe/comma/table formats.
 Use sharp_mx_status_email only when the report is clearly a Sharp MX status/counter email.
 Parser configuration values must be arrays of labels from the email.
 Return every allowed parser configuration key. Use an empty array for keys that do not apply.
+Set confidence_score from 0 to 100 to show how confident you are that the mapping is correct.
 PROMPT;
     }
 
@@ -93,7 +94,7 @@ PROMPT;
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['parser_type', 'parser_configuration', 'explanation'],
+            'required' => ['parser_type', 'parser_configuration', 'explanation', 'confidence_score'],
             'properties' => [
                 'parser_type' => [
                     'type' => 'string',
@@ -112,6 +113,11 @@ PROMPT;
                 ],
                 'explanation' => [
                     'type' => 'string',
+                ],
+                'confidence_score' => [
+                    'type' => 'integer',
+                    'minimum' => 0,
+                    'maximum' => 100,
                 ],
             ],
         ];
@@ -200,6 +206,7 @@ PROMPT;
             'parser_type' => $parserType,
             'parser_configuration' => $configuration,
             'explanation' => is_string($suggestion['explanation'] ?? null) ? $suggestion['explanation'] : null,
+            'confidence_score' => max(0, min(100, (int) ($suggestion['confidence_score'] ?? 50))),
         ];
     }
 }

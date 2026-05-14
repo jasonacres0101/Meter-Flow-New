@@ -633,6 +633,7 @@ class CopierMonitoringTest extends TestCase
         $this->actingAs($admin)->get(route('parser-queue.show', $email))
             ->assertOk()
             ->assertSee('Parser review')
+            ->assertSee('AI guidance')
             ->assertSee('Serial Number')
             ->assertSee('95012345')
             ->assertSee('Suggested Template')
@@ -663,6 +664,7 @@ class CopierMonitoringTest extends TestCase
 
         $this->actingAs($admin)->get(route('parser-queue.show', $email))
             ->assertOk()
+            ->assertSee('AI optional')
             ->assertSee('Serial Number')
             ->assertSee('A5C4121004367')
             ->assertSee('serial_number_labels')
@@ -686,6 +688,7 @@ class CopierMonitoringTest extends TestCase
                         'waste_toner_status_labels' => ['Waste Toner Container'],
                     ],
                     'explanation' => 'Pipe-separated toner report mapped from exact labels.',
+                    'confidence_score' => 86,
                 ]),
             ], 200),
         ]);
@@ -708,6 +711,7 @@ class CopierMonitoringTest extends TestCase
         $this->actingAs($admin)->get(route('parser-queue.show', $email))
             ->assertOk()
             ->assertSee('AI draft')
+            ->assertSee('AI confidence 86%')
             ->assertSee('Pipe-separated toner report mapped from exact labels.')
             ->assertSee('magenta_toner_percentage_labels')
             ->assertSee('Magenta Toner');

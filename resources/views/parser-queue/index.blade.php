@@ -44,10 +44,15 @@
             </thead>
             <tbody>
                 @forelse($emails as $email)
+                    @php($aiRecommendation = $email->ai_review_recommendation)
                     <tr>
                         <td>
                             <div class="font-bold text-slate-950">{{ $email->subject ?: 'No subject' }}</div>
                             <div class="text-xs text-slate-500">{{ $email->from_email ?: 'Unknown sender' }}</div>
+                            <div class="mt-2 inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-bold {{ $aiRecommendation['tone'] }}">
+                                <span>{{ $aiRecommendation['label'] }}</span>
+                                <span>{{ $aiRecommendation['confidence_label'] }} local confidence</span>
+                            </div>
                         </td>
                         <td>{{ $email->company?->name ?? $email->machine?->client?->company?->name ?? 'Unknown' }}</td>
                         <td>

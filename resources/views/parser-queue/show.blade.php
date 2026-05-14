@@ -3,6 +3,8 @@
         $configurationJson = json_encode($suggestedConfiguration, JSON_PRETTY_PRINT);
         $canApprove = filled($email->machine_id);
         $hasAiSuggestion = filled($aiSuggestion);
+        $aiConfidenceScore = (int) ($aiSuggestion['confidence_score'] ?? 0);
+        $aiConfidenceTone = $aiConfidenceScore >= 75 ? 'bg-emerald-50 text-emerald-700' : ($aiConfidenceScore >= 45 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700');
     @endphp
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -23,6 +25,19 @@
     @if($errors->has('ai'))
         <div class="mb-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{{ $errors->first('ai') }}</div>
     @endif
+
+    <div class="mb-5 rounded-lg border border-slate-200 bg-white p-4 text-sm shadow-sm">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+                <div class="font-black text-slate-950">AI guidance</div>
+                <p class="mt-1 leading-6 text-slate-600">{{ $aiReviewRecommendation['reason'] }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span class="rounded-full px-3 py-1 text-xs font-black {{ $aiReviewRecommendation['tone'] }}">{{ $aiReviewRecommendation['label'] }}</span>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{{ $aiReviewRecommendation['confidence_label'] }} local confidence · {{ $aiReviewRecommendation['confidence_score'] }}%</span>
+            </div>
+        </div>
+    </div>
 
     @unless($canApprove)
         <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -76,7 +91,12 @@
                 </div>
 
                 @if($hasAiSuggestion && filled($aiSuggestion['explanation'] ?? null))
-                    <div class="mt-4 rounded-lg bg-purple-50 p-3 text-sm text-purple-900">{{ $aiSuggestion['explanation'] }}</div>
+                    <div class="mt-4 rounded-lg bg-purple-50 p-3 text-sm text-purple-900">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <span>{{ $aiSuggestion['explanation'] }}</span>
+                            <span class="shrink-0 rounded-full px-3 py-1 text-xs font-black {{ $aiConfidenceTone }}">AI confidence {{ $aiConfidenceScore }}%</span>
+                        </div>
+                    </div>
                 @endif
 
                 <label class="app-field mt-4">Parser type

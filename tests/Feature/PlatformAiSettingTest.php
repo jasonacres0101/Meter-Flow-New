@@ -41,6 +41,7 @@ class PlatformAiSettingTest extends TestCase
                     'parser_type' => 'generic_counter_email',
                     'parser_configuration' => ['magenta_toner_percentage_labels' => ['Magenta Toner']],
                     'explanation' => 'Mapped toner fields.',
+                    'confidence_score' => 82,
                 ]),
             ], 200),
         ]);
