@@ -235,10 +235,9 @@ class SaasAccessTest extends TestCase
             ->assertDontSee($companySource->name);
     }
 
-    public function test_report_templates_can_be_filtered_and_cloned_for_faster_setup(): void
+    public function test_platform_admin_can_filter_and_clone_global_report_templates(): void
     {
-        $company = Company::factory()->create();
-        $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
         $manufacturer = Manufacturer::findOrCreateByName('Sharp');
         $masterModel = MachineModel::factory()->create([
             'company_id' => null,
@@ -264,11 +263,12 @@ class SaasAccessTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseHas('report_templates', [
-            'company_id' => $company->id,
+            'company_id' => null,
             'machine_model_id' => $masterModel->id,
             'template_name' => 'Sharp MX-2630N',
-            'version' => 1,
+            'version' => 2,
             'parser_type' => 'sharp_mx_status_email',
+            'approval_status' => ReportTemplate::STATUS_APPROVED_GLOBAL,
         ]);
     }
 

@@ -709,8 +709,9 @@ class CopierMonitoringTest extends TestCase
     {
         $company = Client::factory()->create()->company;
         $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
+        $platformAdmin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
         $manufacturer = Manufacturer::findOrCreateByName('Sharp');
-        $model = MachineModel::factory()->for($company)->create([
+        MachineModel::factory()->for($company)->create([
             'manufacturer_id' => $manufacturer->id,
             'manufacturer' => 'Sharp',
             'model_name' => 'MX-2630N',
@@ -726,12 +727,13 @@ class CopierMonitoringTest extends TestCase
 
         $this->actingAs($admin)->get(route('incoming-report-emails.show', $email))
             ->assertOk()
-            ->assertSee('Build template from email');
+            ->assertSee('Waiting for machine match')
+            ->assertDontSee('Build template from email');
 
-        $this->actingAs($admin)->get(route('report-templates.create', ['incoming_report_email_id' => $email->id]))
+        $this->actingAs($platformAdmin)->get(route('parser-queue.show', $email))
             ->assertOk()
-            ->assertSee('Create Template From Email')
-            ->assertSee('Sharp MX-2630N')
+            ->assertSee('Parser review')
+            ->assertSee('Machine match needed')
             ->assertSee('Device Model')
             ->assertSee('MX-2630N')
             ->assertSee('Black &amp; White Print Count', false)
@@ -743,14 +745,17 @@ class CopierMonitoringTest extends TestCase
 
     public function test_template_edit_shows_detected_fields_from_sample_body(): void
     {
-        $company = Client::factory()->create()->company;
-        $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
-        $model = MachineModel::factory()->for($company)->create([
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $manufacturer = Manufacturer::findOrCreateByName('Sharp');
+        $model = MachineModel::factory()->create([
+            'company_id' => null,
+            'manufacturer_id' => $manufacturer->id,
             'manufacturer' => 'Sharp',
             'model_name' => 'MX-2630N',
             'parser_type' => 'sharp_mx_status_email',
         ]);
-        $template = ReportTemplate::factory()->for($model, 'machineModel')->for($company)->create([
+        $template = ReportTemplate::factory()->for($model, 'machineModel')->create([
+            'company_id' => null,
             'sample_body' => file_get_contents(base_path('tests/Fixtures/sharp_mx_2630n_counter_email_v2.txt')),
             'parser_type' => 'sharp_mx_status_email',
             'parser_configuration' => [
@@ -771,14 +776,17 @@ class CopierMonitoringTest extends TestCase
 
     public function test_template_edit_suggests_mappings_when_configuration_is_empty(): void
     {
-        $company = Client::factory()->create()->company;
-        $admin = User::factory()->for($company)->create(['role' => User::ROLE_COMPANY_ADMIN]);
-        $model = MachineModel::factory()->for($company)->create([
+        $admin = User::factory()->create(['company_id' => null, 'role' => User::ROLE_PLATFORM_ADMIN]);
+        $manufacturer = Manufacturer::findOrCreateByName('Sharp');
+        $model = MachineModel::factory()->create([
+            'company_id' => null,
+            'manufacturer_id' => $manufacturer->id,
             'manufacturer' => 'Sharp',
             'model_name' => 'MX-2630N',
             'parser_type' => 'sharp_mx_status_email',
         ]);
-        $template = ReportTemplate::factory()->for($model, 'machineModel')->for($company)->create([
+        $template = ReportTemplate::factory()->for($model, 'machineModel')->create([
+            'company_id' => null,
             'sample_body' => file_get_contents(base_path('tests/Fixtures/sharp_mx_2630n_counter_email_v2.txt')),
             'parser_type' => 'sharp_mx_status_email',
             'parser_configuration' => [],
