@@ -1,0 +1,120 @@
+<?php
+
+use App\Http\Controllers\ActiveCompanyController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CompanyBillingController;
+use App\Http\Controllers\CompanyUserController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailSourceController;
+use App\Http\Controllers\EngineerPinController;
+use App\Http\Controllers\InboundEmailController;
+use App\Http\Controllers\IncomingReportEmailController;
+use App\Http\Controllers\MachineController;
+use App\Http\Controllers\MachineCredentialController;
+use App\Http\Controllers\MachineModelController;
+use App\Http\Controllers\ParserDefinitionController;
+use App\Http\Controllers\PlatformMailSettingController;
+use App\Http\Controllers\PricingSettingController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\BillingInvoicePdfController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportTemplateController;
+use App\Http\Controllers\RevenueReportController;
+use App\Http\Controllers\ServiceAgreementController;
+use App\Http\Controllers\ServiceTicketAcceptanceController;
+use App\Http\Controllers\ServiceTicketCompletionController;
+use App\Http\Controllers\ServiceTicketController;
+use App\Http\Controllers\ServiceTicketCredentialAccessController;
+use App\Http\Controllers\ServiceTicketTimerController;
+use App\Http\Controllers\SettingsHelpController;
+use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SiteMapController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\TonerAlertSettingController;
+use App\Http\Controllers\UserImpersonationController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware('guest')->group(function () {
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+});
+
+Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::get('gocardless/mandate-return/{company}', [BillingController::class, 'mandateReturn'])->name('gocardless.mandate.return');
+
+Route::middleware('auth')->group(function () {
+    Route::put('active-company', [ActiveCompanyController::class, 'update'])->name('active-company.update');
+    Route::put('engineer-pin', [EngineerPinController::class, 'update'])->name('engineer-pin.update');
+    Route::post('users/{user}/impersonate', [UserImpersonationController::class, 'store'])->middleware('platform_admin')->name('users.impersonate');
+    Route::delete('impersonation', [UserImpersonationController::class, 'destroy'])->name('impersonation.destroy');
+    Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('billing', [BillingController::class, 'show'])->middleware('platform_admin')->name('billing.show');
+    Route::get('billing/invoices/{billingInvoice}/pdf', BillingInvoicePdfController::class)->name('billing.invoices.pdf');
+    Route::put('billing/settings', [BillingController::class, 'update'])->middleware('platform_admin')->name('billing.update');
+    Route::post('billing/capture', [BillingController::class, 'capture'])->middleware('platform_admin')->name('billing.capture');
+    Route::post('billing/generate', [BillingController::class, 'generate'])->middleware('platform_admin')->name('billing.generate');
+    Route::post('billing/gocardless/test', [BillingController::class, 'testGoCardless'])->middleware('platform_admin')->name('billing.gocardless.test');
+    Route::post('billing/invoices/{billingInvoice}/collect', [BillingController::class, 'collectInvoice'])->middleware('platform_admin')->name('billing.invoices.collect');
+    Route::get('/', DashboardController::class)->name('dashboard');
+
+    Route::resource('companies', CompanyController::class)->middleware('platform_admin');
+    Route::post('companies/{company}/gocardless/mandate', [BillingController::class, 'createMandate'])->middleware('platform_admin')->name('companies.gocardless.mandate');
+    Route::post('companies/{company}/gocardless/refresh', [BillingController::class, 'refreshMandate'])->middleware('platform_admin')->name('companies.gocardless.refresh');
+    Route::get('settings/platform-mail', [PlatformMailSettingController::class, 'edit'])->middleware('platform_admin')->name('platform-mail-settings.edit');
+    Route::put('settings/platform-mail', [PlatformMailSettingController::class, 'update'])->middleware('platform_admin')->name('platform-mail-settings.update');
+    Route::post('settings/platform-mail/test', [PlatformMailSettingController::class, 'test'])->middleware('platform_admin')->name('platform-mail-settings.test');
+    Route::resource('parser-definitions', ParserDefinitionController::class)->middleware('platform_admin');
+    Route::resource('users', CompanyUserController::class)->middleware('company_admin');
+
+    Route::middleware('customer_operator')->group(function () {
+        Route::resource('clients', ClientController::class)->except(['destroy']);
+        Route::get('sites/map', SiteMapController::class)->name('sites.map');
+        Route::resource('sites', SiteController::class)->except(['destroy']);
+        Route::resource('machines', MachineController::class);
+        Route::post('machines/{machine}/credentials', [MachineCredentialController::class, 'store'])->name('machines.credentials.store');
+        Route::put('machines/{machine}/credentials/{credential}', [MachineCredentialController::class, 'update'])->name('machines.credentials.update');
+        Route::delete('machines/{machine}/credentials/{credential}', [MachineCredentialController::class, 'destroy'])->name('machines.credentials.destroy');
+        Route::resource('service-tickets', ServiceTicketController::class)->only(['index', 'create', 'store', 'show', 'update']);
+        Route::post('service-tickets/{serviceTicket}/accept', [ServiceTicketAcceptanceController::class, 'store'])->name('service-tickets.accept');
+        Route::get('service-tickets/{serviceTicket}/complete', [ServiceTicketCompletionController::class, 'edit'])->name('service-tickets.complete.edit');
+        Route::put('service-tickets/{serviceTicket}/complete', [ServiceTicketCompletionController::class, 'update'])->name('service-tickets.complete.update');
+        Route::post('service-tickets/{serviceTicket}/timer/start', [ServiceTicketTimerController::class, 'start'])->name('service-tickets.timer.start');
+        Route::post('service-tickets/{serviceTicket}/timer/stop', [ServiceTicketTimerController::class, 'stop'])->name('service-tickets.timer.stop');
+        Route::post('service-tickets/{serviceTicket}/credential-access', [ServiceTicketCredentialAccessController::class, 'store'])->name('service-tickets.credential-access.store');
+        Route::delete('service-tickets/{serviceTicket}/credential-access', [ServiceTicketCredentialAccessController::class, 'destroy'])->name('service-tickets.credential-access.destroy');
+        Route::get('stock', [StockController::class, 'index'])->middleware('not_engineer')->name('stock.index');
+        Route::get('stock/create', [StockController::class, 'create'])->middleware('not_engineer')->name('stock.create');
+        Route::post('stock/products', [StockController::class, 'store'])->middleware('not_engineer')->name('stock.store');
+        Route::post('stock/add', [StockController::class, 'addStock'])->middleware('not_engineer')->name('stock.add');
+        Route::post('stock/transfer', [StockController::class, 'transfer'])->middleware('not_engineer')->name('stock.transfer');
+        Route::get('stock/{stockProduct}', [StockController::class, 'show'])->middleware('not_engineer')->name('stock.show');
+        Route::get('stock/{stockProduct}/edit', [StockController::class, 'edit'])->middleware('not_engineer')->name('stock.edit');
+        Route::put('stock/{stockProduct}', [StockController::class, 'update'])->middleware('not_engineer')->name('stock.update');
+        Route::get('reports/revenue', [RevenueReportController::class, 'index'])->middleware('not_engineer')->name('reports.revenue');
+        Route::get('reports/revenue/export/{format}', [RevenueReportController::class, 'export'])->middleware('not_engineer')->name('reports.revenue.export');
+        Route::resource('service-agreements', ServiceAgreementController::class)->middleware(['company_admin', 'not_engineer']);
+        Route::get('settings/pricing', [PricingSettingController::class, 'edit'])->middleware('company_admin')->name('pricing-settings.edit');
+        Route::put('settings/pricing', [PricingSettingController::class, 'update'])->middleware('company_admin')->name('pricing-settings.update');
+        Route::get('settings/billing', [CompanyBillingController::class, 'show'])->middleware('company_admin')->name('company-billing.show');
+        Route::get('settings/toner-alerts', [TonerAlertSettingController::class, 'edit'])->middleware('company_admin')->name('toner-alert-settings.edit');
+        Route::put('settings/toner-alerts', [TonerAlertSettingController::class, 'update'])->middleware('company_admin')->name('toner-alert-settings.update');
+        Route::get('settings/help', SettingsHelpController::class)->name('settings-help.show');
+        Route::post('incoming-report-emails/pull', [IncomingReportEmailController::class, 'pull'])->middleware('not_engineer')->name('incoming-report-emails.pull');
+        Route::resource('incoming-report-emails', IncomingReportEmailController::class)->middleware('not_engineer')->except(['edit', 'update', 'destroy']);
+        Route::post('incoming-report-emails/{incomingReportEmail}/reprocess', [IncomingReportEmailController::class, 'reprocess'])->middleware('not_engineer')->name('incoming-report-emails.reprocess');
+    });
+    Route::resource('machine-models', MachineModelController::class)->middleware('not_engineer');
+    Route::post('email-sources/{emailSource}/test', [EmailSourceController::class, 'test'])->middleware('company_admin')->name('email-sources.test');
+    Route::resource('email-sources', EmailSourceController::class)->middleware('company_admin');
+    Route::post('report-templates/{reportTemplate}/duplicate', [ReportTemplateController::class, 'duplicate'])->middleware('not_engineer')->name('report-templates.duplicate');
+    Route::post('report-templates/{reportTemplate}/approve-global', [ReportTemplateController::class, 'approveGlobal'])->middleware('not_engineer')->name('report-templates.approve-global');
+    Route::resource('report-templates', ReportTemplateController::class)->middleware('not_engineer');
+});
+
+Route::post('inbound/mailgun', InboundEmailController::class)->name('inbound.mailgun');
+Route::post('inbound/sendgrid', InboundEmailController::class)->name('inbound.sendgrid');
+Route::post('inbound/postmark', InboundEmailController::class)->name('inbound.postmark');
+Route::post('inbound/generic', InboundEmailController::class)->name('inbound.generic');

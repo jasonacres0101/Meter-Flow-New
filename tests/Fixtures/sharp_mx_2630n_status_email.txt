@@ -1,0 +1,49 @@
+Date : 2026/05/11 08:00:01
+
+Machine Name : MX-2630N
+Machine Address : 192.168.1.45
+Serial Number : 95012345
+
+Current Status : READY
+
+[Counter Information]
+
+Total Counter
+123456
+
+Copy Counter
+B/W : 54210
+Color : 8742
+
+Printer Counter
+B/W : 45103
+Color : 13820
+
+Scanner Counter
+18554
+
+FAX Counter
+Send : 521
+Receive : 487
+
+[Toner Information]
+
+Black Toner : 62%
+Cyan Toner : 48%
+Magenta Toner : 51%
+Yellow Toner : 46%
+
+[Paper Information]
+
+Tray 1 : NORMAL
+Tray 2 : NORMAL
+Bypass Tray : NORMAL
+
+[Maintenance Information]
+
+Maintenance Counter : NORMAL
+Waste Toner : NORMAL
+
+No service is required.
+
+This message has been generated automatically by the device.

@@ -1,0 +1,5 @@
+<x-layouts.app title="Companies">
+    <div class="mb-6 flex items-center justify-between"><div><h1 class="app-page-title">Accounts</h1><p class="mt-1 text-sm text-slate-500">Create and manage company access to the SaaS platform.</p></div><a href="{{ route('companies.create') }}" class="app-button">Add company</a></div>
+    <div class="app-panel app-table-wrap"><table class="app-table"><tbody>@foreach($companies as $company)<tr><td><a class="font-bold text-slate-950 hover:text-teal-700" href="{{ route('companies.show', $company) }}">{{ $company->name }}</a><div class="text-xs text-slate-500">{{ $company->account_reference }}</div></td><td>{{ $company->users_count }} users</td><td>{{ $company->sites_count }} sites</td><td>{{ $company->machines_count }} machines</td><td>{{ $company->billing_email }}</td><td><span class="rounded-full px-3 py-1 text-xs font-bold {{ $company->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $company->is_active ? 'Active' : 'Inactive' }}</span></td></tr>@endforeach</tbody></table></div>
+    <div class="mt-4">{{ $companies->links() }}</div>
+</x-layouts.app>

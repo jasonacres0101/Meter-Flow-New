@@ -1,0 +1,51 @@
+026/05/13 12:37:43
+
+Device Name:
+Device Model: MX-2630N
+
+Serial Number: 7505132800
+Machine Code:
+
+Current Device Counter Information:
+
+Black & White Copy Count = 329
+Two Colour Copy Count = 0
+Single Colour Copy Count = 0
+Full Colour Copy Count = 7149
+
+Black & White Print Count = 36301
+Full Colour Print Count = 205735
+
+Black & White Total Print Count = 36732
+Two Colour Total Print Count = 0
+Single Colour Total Print Count = 0
+Colour Total Print Count = 212955
+
+Black & White Scanner Count = 9671
+Two Colour Scanner Count = 0
+Single Colour Scanner Count = 0
+Full Colour Scanner Count = 18513
+
+
+Inserted Toner Number (Bk) = 6
+Inserted Toner Number (C) = 6
+Inserted Toner Number (M) = 5
+Inserted Toner Number (Y) = 6
+
+
+Toner NN End (Bk) = 0
+Toner NN End (C) = 0
+Toner NN End (M) = 0
+Toner NN End (Y) = 0
+
+
+Toner End (Bk) = 4
+Toner End (C) = 5
+Toner End (M) = 4
+Toner End (Y) = 5
+
+
+Toner Residual (Bk) = 24%
+Toner Residual (C) = 61%
+Toner Residual (M) = 88%
+Toner Residual (Y) = 81%
