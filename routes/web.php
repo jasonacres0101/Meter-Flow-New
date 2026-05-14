@@ -17,6 +17,7 @@ use App\Http\Controllers\MachineModelController;
 use App\Http\Controllers\ParserDefinitionController;
 use App\Http\Controllers\ParserReviewQueueController;
 use App\Http\Controllers\PlatformMailSettingController;
+use App\Http\Controllers\PlatformAiSettingController;
 use App\Http\Controllers\PricingSettingController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BillingInvoicePdfController;
@@ -67,6 +68,9 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/platform-mail', [PlatformMailSettingController::class, 'edit'])->middleware('platform_admin')->name('platform-mail-settings.edit');
     Route::put('settings/platform-mail', [PlatformMailSettingController::class, 'update'])->middleware('platform_admin')->name('platform-mail-settings.update');
     Route::post('settings/platform-mail/test', [PlatformMailSettingController::class, 'test'])->middleware('platform_admin')->name('platform-mail-settings.test');
+    Route::get('settings/platform-ai', [PlatformAiSettingController::class, 'edit'])->middleware('platform_admin')->name('platform-ai-settings.edit');
+    Route::put('settings/platform-ai', [PlatformAiSettingController::class, 'update'])->middleware('platform_admin')->name('platform-ai-settings.update');
+    Route::post('settings/platform-ai/test', [PlatformAiSettingController::class, 'test'])->middleware('platform_admin')->name('platform-ai-settings.test');
     Route::resource('parser-definitions', ParserDefinitionController::class)->middleware('platform_admin');
     Route::get('parser-queue', [ParserReviewQueueController::class, 'index'])->middleware('platform_admin')->name('parser-queue.index');
     Route::get('parser-queue/{incomingReportEmail}', [ParserReviewQueueController::class, 'show'])->middleware('platform_admin')->name('parser-queue.show');

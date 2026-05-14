@@ -24,6 +24,7 @@
                         ['label' => 'Master Models', 'route' => 'machine-models.index', 'show' => true],
                         ['label' => 'Report Templates', 'route' => 'report-templates.index', 'show' => true],
                         ['label' => 'Master Mailbox', 'route' => 'email-sources.index', 'show' => true],
+                        ['label' => 'AI Settings', 'route' => 'platform-ai-settings.edit', 'show' => true],
                         ['label' => 'Outbound Email', 'route' => 'platform-mail-settings.edit', 'show' => true],
                     ]
                     : [

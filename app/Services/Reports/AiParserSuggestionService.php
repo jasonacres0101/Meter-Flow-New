@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Models\PlatformAiSetting;
 use App\Support\ParserRegistry;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -16,17 +17,13 @@ class AiParserSuggestionService
      */
     public function suggest(string $body, array $detectedConfiguration = []): array
     {
-        $apiKey = config('services.openai.key');
+        $settings = $this->settings();
 
-        if (blank($apiKey)) {
-            throw new RuntimeException('OpenAI API key is not configured.');
-        }
-
-        $response = Http::withToken($apiKey)
+        $response = Http::withToken($settings['api_key'])
             ->acceptJson()
-            ->timeout((int) config('services.openai.timeout', 30))
-            ->post(rtrim((string) config('services.openai.base_url'), '/').'/responses', [
-                'model' => config('services.openai.model', 'gpt-4.1-mini'),
+            ->timeout($settings['timeout'])
+            ->post(rtrim($settings['base_url'], '/').'/responses', [
+                'model' => $settings['model'],
                 'instructions' => $this->instructions(),
                 'input' => $this->input($body, $detectedConfiguration),
                 'text' => [
@@ -41,6 +38,30 @@ class AiParserSuggestionService
             ->json();
 
         return $this->normalise($this->extractJson($response), $detectedConfiguration);
+    }
+
+    /**
+     * @return array{api_key: string, model: string, base_url: string, timeout: int}
+     */
+    public function settings(): array
+    {
+        $saved = PlatformAiSetting::current();
+
+        $apiKey = $saved?->isReady() ? $saved->api_key : config('services.openai.key');
+        $model = $saved?->isReady() ? $saved->model : config('services.openai.model', 'gpt-4.1-mini');
+        $baseUrl = $saved?->isReady() ? $saved->base_url : config('services.openai.base_url', 'https://api.openai.com/v1');
+        $timeout = $saved?->isReady() ? $saved->timeout : (int) config('services.openai.timeout', 30);
+
+        if (blank($apiKey)) {
+            throw new RuntimeException('OpenAI API key is not configured.');
+        }
+
+        return [
+            'api_key' => $apiKey,
+            'model' => $model,
+            'base_url' => $baseUrl,
+            'timeout' => max(5, min(120, (int) $timeout)),
+        ];
     }
 
     private function instructions(): string
